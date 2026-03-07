@@ -1,37 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cardealer Website
 
-## Getting Started
+A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CSS, Supabase, Cloudinary, and Resend. The project is designed for fast inventory browsing, strong lead capture, and a minimal admin workflow.
 
-First, run the development server:
+## Stack
+- Next.js 16 App Router
+- TypeScript
+- Tailwind CSS v4
+- Supabase
+- Cloudinary
+- Resend
+- Vitest
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Local Setup
+1. Install dependencies:
+   `npm.cmd install`
+2. Copy `.env.example` to `.env.local`.
+3. Fill in Supabase, Cloudinary, and Resend credentials as available.
+4. Start the app:
+   `npm.cmd run dev`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `RESEND_API_KEY`
+- `ADMIN_NOTIFICATION_EMAIL`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Demo Mode
+- If Supabase is not configured, the site runs with demo inventory and a demo admin mode.
+- Demo admin credentials are documented in the app UI and intended only for local review.
+- Demo mode keeps the public site and admin workflow usable without external services, but data is not persistent across process restarts.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Supabase Setup
+1. Create a new Supabase project.
+2. Run the SQL migration in `supabase/migrations/001_initial_schema.sql`.
+3. Optionally run `supabase/seed/001_demo_seed.sql` for starter data.
+4. Create an auth user for the admin.
+5. Insert that user into `admin_profiles`.
 
-## Learn More
+## Cloudinary Setup
+- Create a Cloudinary environment.
+- Add the cloud name, API key, and API secret to the app environment.
+- Vehicle image uploads use Cloudinary when credentials are present.
 
-To learn more about Next.js, take a look at the following resources:
+## Resend Setup
+- Create a Resend API key.
+- Verify a sender domain or use a valid test sender.
+- Set `ADMIN_NOTIFICATION_EMAIL` to the sales inbox that should receive lead notifications.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Verification Commands
+- Lint: `npm.cmd run lint`
+- Typecheck: `npm.cmd run typecheck`
+- Tests: `npm.cmd run test`
+- Production build: `npm.cmd run build`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
+1. Push the repository to a Git provider.
+2. Import the project into Vercel.
+3. Configure the environment variables.
+4. Run the Supabase migration and seed.
+5. Deploy and validate inventory pages, forms, and admin login.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-"# cardealer-website" 
+## Planning Docs
+- [PLAN.md](./PLAN.md)
+- [DECISIONS.md](./DECISIONS.md)
+- [docs/01-project-scope.md](./docs/01-project-scope.md)
+- [docs/02-site-map.md](./docs/02-site-map.md)
+- [docs/03-user-flows.md](./docs/03-user-flows.md)
+- [docs/04-tech-stack.md](./docs/04-tech-stack.md)
+- [docs/05-database-schema.md](./docs/05-database-schema.md)
+- [docs/06-content-plan.md](./docs/06-content-plan.md)
+- [docs/07-seo-plan.md](./docs/07-seo-plan.md)
+- [docs/08-ui-ux-rules.md](./docs/08-ui-ux-rules.md)
+- [docs/09-feature-roadmap.md](./docs/09-feature-roadmap.md)
+- [docs/10-deployment-plan.md](./docs/10-deployment-plan.md)
+- [docs/11-admin-workflow.md](./docs/11-admin-workflow.md)
