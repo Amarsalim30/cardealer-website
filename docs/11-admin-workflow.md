@@ -7,9 +7,10 @@
 ## Add or Edit Vehicle
 1. Open the admin vehicles page.
 2. Create a new vehicle or edit an existing one.
-3. Enter title, make, model, year, condition, price, specs, status, and stock category.
-4. Add image URLs or upload to Cloudinary when credentials are configured.
-5. Reorder images, choose a hero image, and save.
+3. Enter a stock code that matches the Cloudinary asset folder for the car, for example `CAR-001` for folder `car-001`.
+4. Save the vehicle content first so title, pricing, description, and status exist even before the gallery is final.
+5. Sync the Cloudinary folder from the vehicle edit page to pull the matching gallery into the listing.
+6. Reorder images, choose a hero image, or upload additional images from admin when needed.
 
 ## Publish Workflow
 - Save as draft while preparing a vehicle.
@@ -23,6 +24,8 @@
 - Follow-up still happens outside the system by phone, WhatsApp, or email.
 
 ## Operational Notes
+- `vehicles.stock_code` is the image-matching key between Supabase and Cloudinary.
+- Preferred workflow: create or edit the vehicle text first, then sync the stock-code folder into `vehicle_images`.
 - Keep hero images sharp and consistent.
 - Use featured status only on priority stock.
 - Keep phone and WhatsApp contact details current in site config.

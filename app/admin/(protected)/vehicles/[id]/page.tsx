@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { CloudinarySyncCard } from "@/components/admin/cloudinary-sync-card";
 import { VehicleForm } from "@/components/admin/vehicle-form";
 import { getLocations, getVehicleById } from "@/lib/data/repository";
 
@@ -18,5 +19,10 @@ export default async function AdminEditVehiclePage({
     notFound();
   }
 
-  return <VehicleForm locations={locations} vehicle={vehicle} />;
+  return (
+    <div className="space-y-6">
+      <CloudinarySyncCard vehicleId={vehicle.id} stockCode={vehicle.stockCode} />
+      <VehicleForm locations={locations} vehicle={vehicle} />
+    </div>
+  );
 }

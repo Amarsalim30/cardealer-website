@@ -16,6 +16,46 @@ function buildAltText(vehicleTitle, stockCode, index) {
   }`;
 }
 
+function buildAssetFolderCandidates(stockCode, folderPrefix) {
+  const normalizedStockCode = stockCode.trim().toUpperCase();
+  const lowerStockCode = normalizedStockCode.toLowerCase();
+
+  return [...new Set([
+    normalizedStockCode,
+    lowerStockCode,
+    folderPrefix ? `${folderPrefix}/${normalizedStockCode}` : "",
+    folderPrefix ? `${folderPrefix}/${lowerStockCode}` : "",
+  ])].filter(Boolean);
+}
+
+async function resolveCloudinaryAssets(cloudinaryClient, stockCode, folderPrefix) {
+  const candidates = buildAssetFolderCandidates(stockCode, folderPrefix);
+  let lastError = null;
+
+  for (const candidate of candidates) {
+    try {
+      const assets = sortCloudinaryAssets(
+        await listAssetsByAssetFolder(cloudinaryClient, candidate),
+      );
+
+      if (assets.length) {
+        return {
+          assetFolder: candidate,
+          assets,
+        };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const detail = lastError instanceof Error ? ` ${lastError.message}` : "";
+
+  throw new Error(
+    `No JPG, JPEG, PNG, or WEBP assets were found for stock code "${stockCode}". Tried folders: ${candidates.join(", ")}.${detail}`,
+  );
+}
+
 export async function syncVehicleImagesForStockCode({
   cloudinaryClient,
   supabase,
@@ -25,16 +65,11 @@ export async function syncVehicleImagesForStockCode({
 }) {
   const normalizedStockCode = stockCode.trim().toUpperCase();
   const vehicle = await getVehicleByStockCode(supabase, normalizedStockCode);
-  const assetFolder = `${folderPrefix}/${normalizedStockCode}`;
-  const assets = sortCloudinaryAssets(
-    await listAssetsByAssetFolder(cloudinaryClient, assetFolder),
+  const { assetFolder, assets } = await resolveCloudinaryAssets(
+    cloudinaryClient,
+    normalizedStockCode,
+    folderPrefix,
   );
-
-  if (!assets.length) {
-    throw new Error(
-      `No JPG, JPEG, PNG, or WEBP assets were found in Cloudinary folder "${assetFolder}".`,
-    );
-  }
 
   const desiredRows = assets.map((asset, index) => {
     if (!asset.public_id || !asset.secure_url) {

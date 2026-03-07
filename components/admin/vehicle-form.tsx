@@ -50,6 +50,7 @@ export function VehicleForm({
   const [uploadError, setUploadError] = useState("");
   const [manualImageUrl, setManualImageUrl] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [stockCode, setStockCode] = useState(vehicle?.stockCode || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const serializedImages = useMemo(
@@ -90,6 +91,13 @@ export function VehicleForm({
       return;
     }
 
+    if (!stockCode.trim()) {
+      setUploadError(
+        "Enter the stock code first so uploads go into the matching Cloudinary folder.",
+      );
+      return;
+    }
+
     setUploading(true);
     setUploadError("");
 
@@ -99,6 +107,7 @@ export function VehicleForm({
       for (const file of Array.from(files)) {
         const payload = new FormData();
         payload.append("file", file);
+        payload.append("stockCode", stockCode);
 
         const response = await fetch("/api/cloudinary/upload", {
           method: "POST",
@@ -182,9 +191,15 @@ export function VehicleForm({
             <Input
               id="stockCode"
               name="stockCode"
-              defaultValue={vehicle?.stockCode}
-              placeholder="KDL-001"
+              value={stockCode}
+              onChange={(event) => setStockCode(event.target.value)}
+              placeholder="CAR-001"
             />
+            <p className="mt-2 text-xs leading-6 text-stone-500">
+              Match this to the Cloudinary asset folder for the car, such as{" "}
+              <strong>car-001</strong> or <strong>KDJ-001</strong>. You can save
+              the vehicle first and sync the gallery later from the edit page.
+            </p>
           </div>
           <div>
             <Label htmlFor="slug">Slug</Label>
@@ -339,6 +354,15 @@ export function VehicleForm({
         </div>
 
         <div className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-stone-950">Gallery images</p>
+            <p className="mt-2 text-sm leading-7 text-stone-600">
+              Upload directly into the stock-code Cloudinary folder, add image
+              URLs manually, or save without images and sync the folder from the
+              edit screen afterwards.
+            </p>
+          </div>
+
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
             <div className="flex-1">
               <Label htmlFor="manual-image">Add image by URL</Label>
@@ -372,70 +396,78 @@ export function VehicleForm({
 
           {uploadError ? <p className="text-sm text-red-600">{uploadError}</p> : null}
 
-          <div className="grid gap-4">
-            {images.map((image, index) => (
-              <div
-                key={`${image.imageUrl}-${index}`}
-                className="flex flex-col gap-4 rounded-3xl border border-border bg-stone-50 p-4 md:flex-row md:items-center"
-              >
-                <div className="relative h-24 w-full overflow-hidden rounded-2xl md:w-40">
-                  <Image
-                    src={image.imageUrl}
-                    alt={image.altText || "Vehicle image"}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-stone-800">{image.imageUrl}</p>
-                  <Input
-                    placeholder="Alt text"
-                    value={image.altText || ""}
-                    onChange={(event) =>
-                      setImages((current) =>
-                        current.map((item, itemIndex) =>
-                          itemIndex === index
-                            ? { ...item, altText: event.target.value }
-                            : item,
-                        ),
-                      )
-                    }
-                    className="mt-3"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="inline-flex size-10 items-center justify-center rounded-full border border-border"
-                    onClick={() => setHero(index)}
-                    aria-label="Set hero image"
-                  >
-                    <Star
-                      className={`size-4 ${
-                        image.isHero ? "fill-primary text-primary" : "text-stone-500"
-                      }`}
+          {images.length ? (
+            <div className="grid gap-4">
+              {images.map((image, index) => (
+                <div
+                  key={`${image.imageUrl}-${index}`}
+                  className="flex flex-col gap-4 rounded-3xl border border-border bg-stone-50 p-4 md:flex-row md:items-center"
+                >
+                  <div className="relative h-24 w-full overflow-hidden rounded-2xl md:w-40">
+                    <Image
+                      src={image.imageUrl}
+                      alt={image.altText || "Vehicle image"}
+                      fill
+                      className="object-cover"
                     />
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex size-10 items-center justify-center rounded-full border border-border"
-                    onClick={() => moveImageUp(index)}
-                    aria-label="Move image up"
-                  >
-                    <ArrowUp className="size-4 text-stone-500" />
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex size-10 items-center justify-center rounded-full border border-border"
-                    onClick={() => removeImage(index)}
-                    aria-label="Remove image"
-                  >
-                    <Trash2 className="size-4 text-stone-500" />
-                  </button>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-stone-800">{image.imageUrl}</p>
+                    <Input
+                      placeholder="Alt text"
+                      value={image.altText || ""}
+                      onChange={(event) =>
+                        setImages((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, altText: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                      className="mt-3"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex size-10 items-center justify-center rounded-full border border-border"
+                      onClick={() => setHero(index)}
+                      aria-label="Set hero image"
+                    >
+                      <Star
+                        className={`size-4 ${
+                          image.isHero ? "fill-primary text-primary" : "text-stone-500"
+                        }`}
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex size-10 items-center justify-center rounded-full border border-border"
+                      onClick={() => moveImageUp(index)}
+                      aria-label="Move image up"
+                    >
+                      <ArrowUp className="size-4 text-stone-500" />
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex size-10 items-center justify-center rounded-full border border-border"
+                      onClick={() => removeImage(index)}
+                      aria-label="Remove image"
+                    >
+                      <Trash2 className="size-4 text-stone-500" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-dashed border-border bg-stone-50 px-5 py-8 text-sm leading-7 text-stone-600">
+              No gallery images yet. You can save the vehicle now and sync the
+              Cloudinary folder from the edit screen, or upload images after the
+              stock code is set.
+            </div>
+          )}
         </div>
 
         {state.message ? (

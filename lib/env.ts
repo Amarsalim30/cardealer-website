@@ -29,3 +29,6 @@ export const hasCloudinaryConfig = Boolean(
 );
 
 export const hasResendConfig = Boolean(env.resendApiKey);
+
+export const allowDemoAdmin =
+  process.env.ENABLE_DEMO_ADMIN === "1" || process.env.NODE_ENV !== "production";

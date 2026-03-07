@@ -6,12 +6,12 @@ import { syncVehicleImagesForStockCode } from "./lib/vehicle-image-sync.mjs";
 function printUsage() {
   console.log(`
 Usage:
-  npm.cmd run cloudinary:sync -- --stock-code KDL-001
-  npm.cmd run cloudinary:sync -- KDL-001
-  npm.cmd run cloudinary:sync -- --stock-code KDL-001 --dry-run
+  npm.cmd run cloudinary:sync -- --stock-code CAR-001
+  npm.cmd run cloudinary:sync -- CAR-001
+  npm.cmd run cloudinary:sync -- --stock-code CAR-001 --dry-run
 
 Options:
-  --stock-code <value>  Stock code to sync, e.g. KDL-001
+  --stock-code <value>  Stock code to sync, e.g. CAR-001
   --dry-run             Show what would change without writing to Supabase
   --help                Show this help text
 `.trim());
@@ -54,7 +54,7 @@ function parseArgs(argv) {
   }
 
   if (!args.stockCode) {
-    throw new Error("Provide a stock code with --stock-code KDL-001.");
+    throw new Error("Provide a stock code with --stock-code CAR-001.");
   }
 
   return args;

@@ -10,15 +10,23 @@ import { getCategorySummary } from "@/lib/data/filters";
 import type { Vehicle } from "@/types/dealership";
 
 export function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+  const primaryImage = vehicle.heroImageUrl || vehicle.images[0]?.imageUrl;
+
   return (
     <Card className="overflow-hidden rounded-[28px]">
       <div className="relative aspect-[16/11] overflow-hidden">
-        <Image
-          src={vehicle.heroImageUrl || vehicle.images[0]?.imageUrl}
-          alt={vehicle.title}
-          fill
-          className="object-cover"
-        />
+        {primaryImage ? (
+          <Image
+            src={primaryImage}
+            alt={vehicle.title}
+            fill
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center bg-[linear-gradient(135deg,#f5f5f4,white)] px-6 text-center text-sm leading-7 text-stone-500">
+            Gallery coming soon for {vehicle.stockCode}
+          </div>
+        )}
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
           {vehicle.featured ? <Badge variant="default">Featured</Badge> : null}
           {vehicle.negotiable ? <Badge variant="accent">Negotiable</Badge> : null}

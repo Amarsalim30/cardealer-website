@@ -29,7 +29,7 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
 
       {demoMode ? (
         <div className="mt-6 rounded-[24px] border border-border bg-stone-50 p-5 text-sm text-stone-600">
-          <p className="font-semibold text-stone-900">Demo admin mode</p>
+          <p className="font-semibold text-stone-900">Local demo admin</p>
           <p className="mt-2">Email: {siteConfig.demoAdmin.email}</p>
           <p>Password: {siteConfig.demoAdmin.password}</p>
         </div>

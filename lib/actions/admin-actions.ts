@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdminSession, signInDemoAdmin, signOutAdmin } from "@/lib/auth";
-import { hasSupabaseConfig } from "@/lib/env";
+import { allowDemoAdmin, hasSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { mapVehicleFormData } from "@/lib/vehicle-form";
 import {
   deleteVehicle,
   getVehicleById,
   saveVehicle,
+  syncVehicleImagesFromCloudinary,
   toggleVehicleFeatured,
   updateVehicleStatus,
 } from "@/lib/data/repository";
@@ -53,17 +54,21 @@ export async function loginAdminAction(
     };
   }
 
-  if (!hasSupabaseConfig) {
-    const result = await signInDemoAdmin(email, password);
+  if (allowDemoAdmin) {
+    const demoResult = await signInDemoAdmin(email, password);
 
-    if (!result.success) {
-      return {
-        success: false,
-        message: result.message,
-      };
+    if (demoResult.success) {
+      redirect("/admin/vehicles");
     }
+  }
 
-    redirect("/admin/vehicles");
+  if (!hasSupabaseConfig) {
+    return {
+      success: false,
+      message: allowDemoAdmin
+        ? "Use the documented demo admin credentials."
+        : "Supabase auth is not configured.",
+    };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -73,7 +78,9 @@ export async function loginAdminAction(
   if (error) {
     return {
       success: false,
-      message: "Login failed. Check the credentials and try again.",
+      message: allowDemoAdmin
+        ? "Login failed. Use the local demo admin credentials or finish Supabase admin setup."
+        : "Login failed. Check the credentials and try again.",
     };
   }
 
@@ -81,18 +88,20 @@ export async function loginAdminAction(
     data: { user },
   } = await supabase!.auth.getUser();
 
-  const { data: profile } = await supabase!
+  const { data: profile, error: profileError } = await supabase!
     .from("admin_profiles")
     .select("user_id")
     .eq("user_id", user?.id ?? "")
     .maybeSingle();
 
-  if (!profile) {
+  if (profileError || !profile) {
     await supabase!.auth.signOut();
 
     return {
       success: false,
-      message: "This account does not have admin access.",
+      message: profileError
+        ? "Supabase admin access is not ready yet. Use the local demo admin or complete the admin_profiles setup."
+        : "This account does not have admin access.",
     };
   }
 
@@ -108,11 +117,13 @@ export async function saveVehicleAction(
   _prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   try {
     const input = mapVehicleFormData(formData);
-    const vehicle = await saveVehicle(input);
+    const vehicle = await saveVehicle(input, {
+      forceDemo: session.mode === "demo",
+    });
     revalidateVehiclePaths(vehicle.slug);
     revalidatePath("/admin/vehicles");
     redirect("/admin/vehicles");
@@ -131,7 +142,7 @@ export async function saveVehicleAction(
 }
 
 export async function setVehicleStatusAction(formData: FormData) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const id = String(formData.get("id") || "");
   const status = String(formData.get("status") || "") as
@@ -140,26 +151,70 @@ export async function setVehicleStatusAction(formData: FormData) {
     | "sold"
     | "unpublished";
 
-  const vehicle = await updateVehicleStatus(id, status);
+  const vehicle = await updateVehicleStatus(id, status, {
+    forceDemo: session.mode === "demo",
+  });
   revalidateVehiclePaths(vehicle?.slug);
   revalidatePath("/admin/vehicles");
 }
 
 export async function toggleVehicleFeaturedAction(formData: FormData) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const id = String(formData.get("id") || "");
-  const vehicle = await toggleVehicleFeatured(id);
+  const vehicle = await toggleVehicleFeatured(id, {
+    forceDemo: session.mode === "demo",
+  });
   revalidateVehiclePaths(vehicle?.slug);
   revalidatePath("/admin/vehicles");
 }
 
 export async function deleteVehicleAction(formData: FormData) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   const id = String(formData.get("id") || "");
   const vehicle = await getVehicleById(id);
-  await deleteVehicle(id);
+  await deleteVehicle(id, {
+    forceDemo: session.mode === "demo",
+  });
   revalidateVehiclePaths(vehicle?.slug);
   revalidatePath("/admin/vehicles");
+}
+
+export async function syncVehicleImagesAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const session = await requireAdminSession();
+  const id = String(formData.get("id") || "");
+
+  if (!id) {
+    return {
+      success: false,
+      message: "Vehicle id is required for image sync.",
+    };
+  }
+
+  try {
+    const result = await syncVehicleImagesFromCloudinary(id, {
+      forceDemo: session.mode === "demo",
+    });
+
+    revalidateVehiclePaths(result.vehicle.slug);
+    revalidatePath("/admin/vehicles");
+    revalidatePath(`/admin/vehicles/${id}`);
+
+    return {
+      success: true,
+      message: `Synced ${result.syncedCount} image(s) from Cloudinary folder "${result.assetFolder}".`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Cloudinary folder sync failed.",
+    };
+  }
 }

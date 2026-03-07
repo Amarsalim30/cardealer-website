@@ -41,5 +41,5 @@ export const vehicleFormSchema = z.object({
   status: z.enum(vehicleStatuses),
   stockCategory: z.enum(stockCategories),
   description: z.string().trim().min(20, "Enter a stronger description."),
-  images: z.array(vehicleImageSchema).min(1, "Add at least one image."),
+  images: z.array(vehicleImageSchema),
 });

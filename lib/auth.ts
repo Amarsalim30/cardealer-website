@@ -2,26 +2,35 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { siteConfig } from "@/lib/config/site";
-import { hasSupabaseConfig } from "@/lib/env";
+import { allowDemoAdmin, hasSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AdminSession } from "@/types/dealership";
 
 const DEMO_ADMIN_COOKIE = "demo-admin-session";
 
-export async function getAdminSession(): Promise<AdminSession | null> {
-  const cookieStore = await cookies();
+function getDemoSessionValue(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  if (!allowDemoAdmin) {
+    return null;
+  }
 
-  if (!hasSupabaseConfig) {
-    const demoSession = cookieStore.get(DEMO_ADMIN_COOKIE)?.value;
-
-    if (demoSession === "1") {
-      return {
-        mode: "demo",
+  return cookieStore.get(DEMO_ADMIN_COOKIE)?.value === "1"
+    ? {
+        mode: "demo" as const,
         email: siteConfig.demoAdmin.email,
         name: "Demo Admin",
-      };
-    }
+      }
+    : null;
+}
 
+export async function getAdminSession(): Promise<AdminSession | null> {
+  const cookieStore = await cookies();
+  const demoSession = getDemoSessionValue(cookieStore);
+
+  if (demoSession) {
+    return demoSession;
+  }
+
+  if (!hasSupabaseConfig) {
     return null;
   }
 
@@ -70,6 +79,13 @@ export async function requireAdminSession() {
 export async function signInDemoAdmin(email: string, password: string) {
   const cookieStore = await cookies();
 
+  if (!allowDemoAdmin) {
+    return {
+      success: false as const,
+      message: "Demo admin is disabled in this environment.",
+    };
+  }
+
   if (
     email === siteConfig.demoAdmin.email &&
     password === siteConfig.demoAdmin.password
@@ -92,9 +108,9 @@ export async function signInDemoAdmin(email: string, password: string) {
 
 export async function signOutAdmin() {
   const cookieStore = await cookies();
+  cookieStore.delete(DEMO_ADMIN_COOKIE);
 
   if (!hasSupabaseConfig) {
-    cookieStore.delete(DEMO_ADMIN_COOKIE);
     return;
   }
 
