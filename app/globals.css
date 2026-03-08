@@ -106,9 +106,39 @@ button {
 }
 
 .hero-perceptive-wrap {
+  isolation: isolate;
+}
+
+.hero-stage-panel {
+  background:
+    radial-gradient(
+      circle at 22% 24%,
+      rgba(248, 190, 141, 0.24),
+      transparent 33%
+    ),
+    radial-gradient(
+      circle at 76% 18%,
+      rgba(73, 182, 255, 0.2),
+      transparent 36%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 18%,
+      rgba(7, 9, 14, 0.92) 100%
+    );
   box-shadow:
-    0 26px 60px rgba(5, 7, 18, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 34px 74px rgba(5, 7, 18, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.hero-stage-glow {
+  background: radial-gradient(
+    circle,
+    rgba(245, 193, 150, 0.36) 0%,
+    rgba(245, 193, 150, 0) 70%
+  );
+  filter: blur(10px);
 }
 
 .hero-perceptive-image {

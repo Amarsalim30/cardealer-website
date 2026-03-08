@@ -85,9 +85,10 @@ export default async function Home() {
             </div>
 
             <div className="relative pb-12 sm:pb-16">
-              <Card className="hero-perceptive-wrap relative overflow-visible rounded-[34px] border border-stone-900 bg-[#05070d] px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8">
-                <div className="pointer-events-none absolute inset-0 rounded-[34px] bg-[radial-gradient(circle_at_24%_22%,rgba(248,190,141,0.24),transparent_30%),radial-gradient(circle_at_78%_16%,rgba(73,182,255,0.2),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.02)_18%,rgba(7,9,14,0.9)_100%)]" />
-                <div className="relative min-h-[280px] sm:min-h-[320px] lg:min-h-[360px]">
+              <div className="hero-perceptive-wrap relative overflow-visible px-2 pt-4 sm:px-4 sm:pt-6">
+                <div className="hero-stage-panel pointer-events-none absolute inset-x-3 bottom-0 top-[14%] rounded-[34px] sm:inset-x-6 sm:top-[12%]" />
+                <div className="hero-stage-glow pointer-events-none absolute -top-5 left-[16%] h-28 w-52 rounded-full sm:-top-8 sm:left-[22%] sm:h-36 sm:w-64" />
+                <div className="relative min-h-[290px] sm:min-h-[330px] lg:min-h-[370px]">
                   <div className="hero-speed-line absolute left-6 top-1/2 h-12 w-44 rounded-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)] blur-xl" />
                   <div
                     className="hero-speed-line absolute left-8 top-[62%] h-10 w-48 rounded-full bg-[linear-gradient(90deg,transparent,rgba(248,190,141,0.34),transparent)] blur-xl"
@@ -103,13 +104,13 @@ export default async function Home() {
                   />
                   <div className="hero-popout-shadow pointer-events-none absolute bottom-[2%] left-1/2 z-10 h-12 w-[72%] -translate-x-1/2 rounded-full bg-black/55 blur-2xl sm:h-14" />
                 </div>
-                <div className="relative z-30 mt-2 rounded-[18px] border border-white/12 bg-white/[0.08] px-4 py-3 text-sm text-white/90 backdrop-blur">
+                <div className="relative z-30 ml-3 mt-2 w-fit rounded-[18px] border border-white/12 bg-white/[0.08] px-4 py-3 text-sm text-white/90 backdrop-blur sm:ml-8">
                   <p className="text-xs uppercase tracking-[0.2em] text-white/60">
                     Signature hero
                   </p>
                   <p className="mt-1 font-semibold">Toyota Land Cruiser Prado</p>
                 </div>
-              </Card>
+              </div>
             </div>
           </div>
 
