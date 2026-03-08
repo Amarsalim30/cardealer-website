@@ -37,6 +37,55 @@ type SupabaseClient =
   | NonNullable<ReturnType<typeof createSupabasePublicClient>>
   | NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
 
+let useDemoReadFallback = false;
+
+type SupabaseErrorLike = {
+  code?: string;
+  message?: string;
+};
+
+function getSupabaseErrorLike(error: unknown): SupabaseErrorLike | null {
+  if (typeof error !== "object" || !error) {
+    return null;
+  }
+
+  const candidate = error as SupabaseErrorLike;
+  return {
+    code: candidate.code,
+    message: candidate.message,
+  };
+}
+
+function isMissingSupabaseTableError(error: unknown) {
+  const parsed = getSupabaseErrorLike(error);
+  const message = parsed?.message || "";
+
+  return (
+    parsed?.code === "PGRST205" ||
+    parsed?.code === "42P01" ||
+    message.includes("Could not find the table 'public.")
+  );
+}
+
+function handleSupabaseReadFailure(prefix: string, error: unknown) {
+  if (isMissingSupabaseTableError(error)) {
+    // The remote project is missing expected schema; avoid repeated failed reads
+    // and rely on the bundled dealership dataset until schema is provisioned.
+    useDemoReadFallback = true;
+    return;
+  }
+
+  console.error(prefix, error instanceof Error ? error.message : error);
+}
+
+function getPublicReadClient() {
+  if (useDemoReadFallback) {
+    return null;
+  }
+
+  return createSupabasePublicClient();
+}
+
 function mapSupabaseVehicleRow(row: Record<string, unknown>): Vehicle {
   const locationRow = row.locations as Record<string, unknown> | null;
   const imageRows = (row.vehicle_images || []) as Array<Record<string, unknown>>;
@@ -161,7 +210,7 @@ function buildSyncedVehicleImages(vehicle: Vehicle, assets: Awaited<ReturnType<t
 }
 
 export async function getLocations() {
-  const supabase = createSupabasePublicClient();
+  const supabase = getPublicReadClient();
 
   if (!supabase) {
     return clone(getDemoState().locations);
@@ -173,7 +222,7 @@ export async function getLocations() {
     .order("is_primary", { ascending: false });
 
   if (error) {
-    console.error("[supabase] Failed to fetch locations", error.message);
+    handleSupabaseReadFailure("[supabase] Failed to fetch locations", error);
     return clone(getDemoState().locations);
   }
 
@@ -192,7 +241,7 @@ export async function getLocations() {
 }
 
 export async function getReviews() {
-  const supabase = createSupabasePublicClient();
+  const supabase = getPublicReadClient();
 
   if (!supabase) {
     return clone(getDemoState().reviews);
@@ -205,7 +254,7 @@ export async function getReviews() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.error("[supabase] Failed to fetch reviews", error.message);
+    handleSupabaseReadFailure("[supabase] Failed to fetch reviews", error);
     return clone(getDemoState().reviews);
   }
 
@@ -222,7 +271,7 @@ export async function getReviews() {
 }
 
 export async function getAllVehicles() {
-  const supabase = createSupabasePublicClient();
+  const supabase = getPublicReadClient();
 
   if (!supabase) {
     return clone(getDemoState().vehicles);
@@ -232,10 +281,7 @@ export async function getAllVehicles() {
     const rows = await selectAllVehicleRows(supabase);
     return rows.map(mapSupabaseVehicleRow);
   } catch (error) {
-    console.error(
-      "[supabase] Failed to fetch vehicles",
-      error instanceof Error ? error.message : error,
-    );
+    handleSupabaseReadFailure("[supabase] Failed to fetch vehicles", error);
     return clone(getDemoState().vehicles);
   }
 }
@@ -291,10 +337,7 @@ export async function getVehicleById(id: string) {
         return mapSupabaseVehicleRow(row);
       }
     } catch (error) {
-      console.error(
-        "[supabase] Failed to fetch vehicle by id",
-        error instanceof Error ? error.message : error,
-      );
+      handleSupabaseReadFailure("[supabase] Failed to fetch vehicle by id", error);
     }
   }
 
@@ -327,10 +370,7 @@ export async function getAdminVehicles() {
     const rows = await selectAllVehicleRows(serverClient);
     return rows.map(mapSupabaseVehicleRow);
   } catch (error) {
-    console.error(
-      "[supabase] Failed to fetch admin vehicles",
-      error instanceof Error ? error.message : error,
-    );
+    handleSupabaseReadFailure("[supabase] Failed to fetch admin vehicles", error);
     return getAllVehicles();
   }
 }
@@ -418,9 +458,9 @@ export async function getVehicleByStockCode(stockCode: string) {
         return mapSupabaseVehicleRow(row);
       }
     } catch (error) {
-      console.error(
+      handleSupabaseReadFailure(
         "[supabase] Failed to fetch vehicle by stock code",
-        error instanceof Error ? error.message : error,
+        error,
       );
     }
   }
