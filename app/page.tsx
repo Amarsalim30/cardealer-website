@@ -1,5 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import {
+  CircleGauge,
+  Cog,
+  Fuel,
+  MessageCircleMore,
+  Phone,
+} from "lucide-react";
 
 import { JsonLd } from "@/components/layout/json-ld";
 import { FloatingWhatsAppButton } from "@/components/marketing/floating-whatsapp-button";
@@ -14,7 +21,58 @@ import {
   getReviews,
 } from "@/lib/data/repository";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
-import { buildWhatsAppUrl } from "@/lib/utils";
+import {
+  buildVehicleUrl,
+  buildWhatsAppUrl,
+} from "@/lib/utils";
+import type { Vehicle } from "@/types/dealership";
+
+function getShowcaseStockLabel(vehicle: Vehicle) {
+  switch (vehicle.stockCategory) {
+    case "imported":
+    case "available_for_importation":
+      return "Imported";
+    case "used":
+    case "traded_in":
+      return "Local Used";
+    case "new":
+    default:
+      return "New Arrival";
+  }
+}
+
+function getShowcaseEngineLabel(vehicle: Vehicle) {
+  const engine = vehicle.engineCapacity?.trim();
+
+  if (engine) {
+    return /cc|l/i.test(engine) ? engine : `${engine} Cc`;
+  }
+
+  return `${Math.max(1, Math.round(vehicle.mileage / 1000))}k km`;
+}
+
+function getShowcasePrice(value: number) {
+  return `KSh ${new Intl.NumberFormat("en-KE", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value)}`;
+}
+
+function getShowcaseTitle(vehicle: Vehicle) {
+  const matched = vehicle.title.trim().match(/^(\d{4})\s+(.+)$/);
+
+  if (matched) {
+    return {
+      year: matched[1],
+      title: matched[2],
+    };
+  }
+
+  return {
+    year: String(vehicle.year),
+    title: vehicle.title,
+  };
+}
 
 export default async function Home() {
   const [collections, reviews, locations] = await Promise.all([
@@ -27,6 +85,13 @@ export default async function Home() {
   const homepageWhatsAppUrl = buildWhatsAppUrl(
     "Hi, I would like help choosing a vehicle.",
     siteConfig.whatsappNumber,
+  );
+  const featuredShowcaseVehicles = [
+    ...collections.featured,
+    ...collections.latest,
+  ].filter(
+    (vehicle, index, vehicles) =>
+      vehicles.findIndex((item) => item.id === vehicle.id) === index,
   );
 
   return (
@@ -154,22 +219,121 @@ export default async function Home() {
       </section>
 
       <section className="section-shell pt-6">
-        <div className="container-shell space-y-12">
+        <div className="container-shell space-y-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading
-              eyebrow="Featured listings"
-              title="Top Picks From Our Current Inventory"
-              description="Browse our most requested cars in Mombasa. Clean imports, trusted trade-ins, and quick WhatsApp access to pricing and availability."
+              eyebrow={collections.featured.length ? "Featured listings" : "Latest arrivals"}
+              title="Cars buyers can enquire about in one click"
+              description="Keep the decision path simple: clear photo, quiet stock labels, compact specs, one primary details CTA, and WhatsApp as the fastest next step."
             />
             <Button asChild variant="secondary">
               <Link href="/inventory">Browse all inventory</Link>
             </Button>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
-            {collections.featured.map((vehicle) => (
-              <VehicleCard key={vehicle.id} vehicle={vehicle} />
-            ))}
-          </div>
+
+          {featuredShowcaseVehicles.length ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+              {featuredShowcaseVehicles.slice(0, 8).map((vehicle) => {
+                const primaryImage =
+                  vehicle.heroImageUrl || vehicle.images[0]?.imageUrl || null;
+                const detailsUrl = buildVehicleUrl(vehicle);
+                const whatsappUrl = buildWhatsAppUrl(
+                  `Hi, I am interested in the ${vehicle.title}. Please share availability, price, and viewing options.`,
+                  siteConfig.whatsappNumber,
+                );
+                const displayTitle = getShowcaseTitle(vehicle);
+
+                return (
+                  <article
+                    key={vehicle.id}
+                    className="flex h-full flex-col rounded-[20px] border border-stone-200 bg-white p-2.5 shadow-[0_10px_24px_rgba(28,25,23,0.05)]"
+                  >
+                    <div className="relative aspect-square overflow-hidden rounded-[16px] border border-stone-200 bg-stone-200">
+                      {primaryImage ? (
+                        <Image
+                          src={primaryImage}
+                          alt={vehicle.title}
+                          fill
+                          className="object-cover transition-transform duration-500 hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center bg-[linear-gradient(135deg,#ece7df,#f8f5ef)] px-6 text-center text-sm font-medium text-stone-500">
+                          Gallery coming soon for {vehicle.stockCode}
+                        </div>
+                      )}
+
+                      <div className="absolute inset-x-0 inset-y-0 bg-gradient-to-t from-black/75 via-black/12 to-black/5" />
+
+                      <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-stone-900/84 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_8px_20px_rgba(28,25,23,0.24)] backdrop-blur-sm">
+                          {getShowcaseStockLabel(vehicle)}
+                        </span>
+                      </div>
+
+                      <div className="absolute inset-x-0 bottom-0 p-4">
+                        <div className="flex items-end justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-white/78">
+                              {displayTitle.year}
+                            </p>
+                            <h3 className="mt-2 text-[1.05rem] font-bold leading-tight text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden sm:text-[1.12rem]">
+                              {displayTitle.title}
+                            </h3>
+                          </div>
+                          <p className="shrink-0 rounded-full bg-white/92 px-3 py-1.5 text-sm font-bold text-stone-950 shadow-[0_8px_18px_rgba(15,23,42,0.22)]">
+                            {getShowcasePrice(vehicle.price)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-1 flex-col gap-3 px-1 pb-1 pt-3">
+                      <div className="flex flex-wrap gap-2 text-[0.82rem] font-medium text-stone-700">
+                        <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5">
+                          <CircleGauge className="size-3.5 shrink-0 text-stone-500" />
+                          <span className="truncate">{getShowcaseEngineLabel(vehicle)}</span>
+                        </span>
+                        <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5">
+                          <Cog className="size-3.5 shrink-0 text-stone-500" />
+                          <span className="truncate">{vehicle.transmission}</span>
+                        </span>
+                        <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5">
+                          <Fuel className="size-3.5 shrink-0 text-stone-500" />
+                          <span className="truncate">{vehicle.fuelType}</span>
+                        </span>
+                      </div>
+
+                      <div className="mt-auto flex items-center gap-2 pt-0.5">
+                        <Link
+                          href={detailsUrl}
+                          className="inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[0_10px_20px_rgba(165,90,42,0.22)] transition-colors hover:bg-[#8c4922]"
+                        >
+                          View Details
+                        </Link>
+
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`WhatsApp about ${vehicle.title}`}
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_8px_18px_rgba(37,211,102,0.22)] transition-colors hover:bg-[#1fb85a]"
+                        >
+                          <MessageCircleMore className="size-4.5" />
+                        </a>
+                        <a
+                          href={siteConfig.phoneHref}
+                          aria-label={`Call sales about ${vehicle.title}`}
+                          className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-stone-300 bg-white text-stone-700 transition-colors hover:bg-stone-100"
+                        >
+                          <Phone className="size-4" />
+                        </a>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </section>
 
