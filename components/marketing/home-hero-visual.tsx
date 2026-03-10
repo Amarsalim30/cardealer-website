@@ -131,10 +131,14 @@ export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
           ) : null}
         </div>
 
-        <div className="absolute left-[-6%] top-[14%] z-20 h-32 w-32 sm:left-[-2%] sm:h-40 sm:w-40 lg:left-[-12%] lg:top-[13%] lg:h-[13rem] lg:w-[13rem]">
-          <div className="absolute inset-[-8%] rounded-full border border-primary/18" />
-          <div className="absolute inset-0 rounded-full border border-white/80 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.98),rgba(244,238,231,0.76)_54%,rgba(225,215,203,0.36)_100%)] shadow-[0_18px_36px_rgba(61,39,14,0.14)]" />
-          <div className="absolute inset-[12%] rounded-full border border-white/65 bg-[radial-gradient(circle_at_34%_28%,rgba(255,255,255,0.92),rgba(241,233,222,0.74)_56%,rgba(225,214,202,0.28)_100%)]" />
+        <div className="absolute left-[-7%] top-[12%] z-20 h-36 w-36 sm:left-[-3%] sm:h-44 sm:w-44 lg:left-[-13%] lg:top-[11%] lg:h-[14rem] lg:w-[14rem]">
+          <div className="absolute inset-[-14%] rounded-full bg-[radial-gradient(circle,rgba(180,140,101,0.12)_0%,rgba(180,140,101,0.05)_58%,transparent_74%)] blur-sm" />
+          <div className="absolute inset-[-5%] rounded-full border border-primary/16 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.16),transparent_72%)]" />
+          <div className="absolute inset-0 rounded-full border border-white/80 bg-[radial-gradient(circle_at_46%_40%,rgba(255,255,255,0.99),rgba(246,239,232,0.88)_42%,rgba(225,214,200,0.62)_72%,rgba(188,165,137,0.14)_100%)] shadow-[0_20px_40px_rgba(61,39,14,0.14)]" />
+          <div className="absolute inset-[10%] rounded-full border border-white/70 bg-[radial-gradient(circle_at_48%_40%,rgba(255,255,255,0.96),rgba(241,233,224,0.82)_48%,rgba(216,202,184,0.54)_78%,rgba(176,151,120,0.12)_100%)] shadow-[inset_0_18px_28px_rgba(255,255,255,0.34),inset_0_-22px_34px_rgba(97,74,48,0.08)]" />
+          <div className="absolute inset-[24%] rounded-full border border-white/60 bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.92),rgba(244,237,229,0.72)_56%,rgba(206,188,164,0.24)_100%)] shadow-[inset_0_12px_24px_rgba(255,255,255,0.28)]" />
+          <div className="absolute inset-[32%] rounded-full bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.42),transparent_68%)]" />
+          <div className="pointer-events-none absolute bottom-[20%] left-[14%] right-[18%] h-[14%] rounded-full bg-[radial-gradient(circle,rgba(121,100,76,0.22),rgba(121,100,76,0.05)_68%,transparent_100%)] blur-lg" />
 
           <Image
             src="/carHero.png"
@@ -142,9 +146,9 @@ export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
             width={900}
             height={580}
             priority
-            className="pointer-events-none absolute left-[-34%] top-[38%] z-30 w-[118%] max-w-none object-contain drop-shadow-[0_16px_20px_rgba(20,15,11,0.2)]"
+            className="pointer-events-none absolute left-[-38%] top-[37%] z-30 w-[124%] max-w-none object-contain drop-shadow-[0_18px_22px_rgba(20,15,11,0.22)]"
           />
-          <div className="pointer-events-none absolute bottom-[16%] left-[6%] z-10 h-6 w-[60%] rounded-full bg-[radial-gradient(circle,rgba(28,22,17,0.18),rgba(28,22,17,0.04)_60%,transparent_100%)] blur-xl" />
+          <div className="pointer-events-none absolute bottom-[15%] left-[4%] z-10 h-7 w-[66%] rounded-full bg-[radial-gradient(circle,rgba(28,22,17,0.18),rgba(28,22,17,0.05)_60%,transparent_100%)] blur-xl" />
         </div>
       </div>
 
