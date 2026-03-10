@@ -11,7 +11,7 @@ import { JsonLd } from "@/components/layout/json-ld";
 import { FloatingWhatsAppButton } from "@/components/marketing/floating-whatsapp-button";
 import {
   HomeHeroVisual,
-  type HeroRailItem,
+  type HeroMobileItem,
 } from "@/components/marketing/home-hero-visual";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { Button } from "@/components/ui/button";
@@ -127,15 +127,13 @@ function mapVehicleToDeliveredCard(
   };
 }
 
-function mapVehicleToHeroRailItem(vehicle: Vehicle): HeroRailItem {
+function mapVehicleToHeroMobileItem(vehicle: Vehicle): HeroMobileItem {
   const displayTitle = getShowcaseTitle(vehicle);
 
   return {
-    id: vehicle.id,
     title: displayTitle.title,
     year: displayTitle.year,
     priceLabel: getShowcasePrice(vehicle.price),
-    imageUrl: vehicle.heroImageUrl || vehicle.images[0]?.imageUrl || null,
     detailsUrl: buildVehicleUrl(vehicle),
     stockLabel: getShowcaseStockLabel(vehicle),
   };
@@ -154,6 +152,7 @@ function DeliveredVehicleCard({
             src={vehicle.imageUrl}
             alt={`${vehicle.year} ${vehicle.title}`}
             fill
+            sizes="(min-width: 1280px) 194px, (min-width: 768px) 30vw, 100vw"
             className="object-cover"
           />
         ) : (
@@ -202,9 +201,9 @@ export default async function Home() {
     (vehicle, index, vehicles) =>
       vehicles.findIndex((item) => item.id === vehicle.id) === index,
   );
-  const heroRailItems = featuredShowcaseVehicles
-    .slice(0, 4)
-    .map(mapVehicleToHeroRailItem);
+  const heroMobileItem = featuredShowcaseVehicles[0]
+    ? mapVehicleToHeroMobileItem(featuredShowcaseVehicles[0])
+    : null;
   const deliveredShowcaseVehicles = collections.sold.length
     ? collections.sold
         .slice(0, 3)
@@ -248,7 +247,7 @@ export default async function Home() {
                         alt=""
                         width={900}
                         height={580}
-                        priority
+                        sizes="33px"
                         className="pointer-events-none absolute left-[-0.72em] top-[0.34em] hidden w-[1.18em] max-w-none object-contain drop-shadow-[0_12px_16px_rgba(20,15,11,0.22)] lg:block"
                       />
                       <span className="pointer-events-none absolute left-[-0.34em] top-[0.78em] hidden h-[0.1em] w-[0.78em] rounded-full bg-[radial-gradient(circle,rgba(28,22,17,0.18),rgba(28,22,17,0.05)_60%,transparent_100%)] blur-[0.15em] lg:block" />
@@ -263,7 +262,7 @@ export default async function Home() {
               </div>
 
               <HomeHeroVisual
-                items={heroRailItems}
+                mobileItem={heroMobileItem}
                 backgroundImages={heroBackgroundImages}
               />
             </div>
@@ -321,40 +320,6 @@ export default async function Home() {
               </form>
             </div>
 
-            {/* <Card className="rounded-[32px] border border-stone-900 bg-stone-950 p-8 text-white">
-            <p className="text-xs uppercase tracking-[0.28em] text-stone-400">
-              Why buyers convert here
-            </p>
-            <div className="mt-6 space-y-6">
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <ShieldCheck className="size-8 text-[#f8be8d]" />
-                <h2 className="mt-4 text-xl font-semibold">
-                  Clearer trust signals
-                </h2>
-                <p className="mt-2 text-sm leading-7 text-stone-300">
-                  Each listing leads with availability, specs, location, and fast
-                  contact options instead of clutter.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <Phone className="size-6 text-[#f8be8d]" />
-                  <p className="mt-4 font-semibold">Direct call support</p>
-                  <p className="mt-2 text-sm text-stone-300">
-                    Sales lines stay open for same-day stock checks and viewing
-                    planning.
-                  </p>
-                </div>
-                <div className="rounded-[24px] border border-white/10 bg-white/5 p-5">
-                  <Clock3 className="size-6 text-[#f8be8d]" />
-                  <p className="mt-4 font-semibold">Fast response</p>
-                  <p className="mt-2 text-sm text-stone-300">
-                    Phone and WhatsApp remain visible throughout the journey.
-                  </p>
-                </div>
-              </div>
-            </div>
-            </Card> */}
           </div>
         </section>
 
@@ -404,6 +369,7 @@ export default async function Home() {
                             src={primaryImage}
                             alt={vehicle.title}
                             fill
+                            sizes="(min-width: 1280px) 353px, (min-width: 768px) 50vw, 100vw"
                             className="object-cover transition-transform duration-500 hover:scale-[1.03]"
                           />
                         ) : (

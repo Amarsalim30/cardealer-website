@@ -4,37 +4,32 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export type HeroRailItem = {
-  id: string;
+export type HeroMobileItem = {
   title: string;
   year: string;
   priceLabel: string;
-  imageUrl: string | null;
   detailsUrl: string;
   stockLabel: string;
 };
 
 const zoneTwoClipPath = "polygon(24% 0, 100% 0, 100% 100%, 0 100%)";
+const zoneTwoBorderPath = "M 24 0 H 100 V 100 H 0 Z";
 
 export function HomeHeroVisual({
-  items,
+  mobileItem,
   backgroundImages,
 }: {
-  items: HeroRailItem[];
+  mobileItem: HeroMobileItem | null;
   backgroundImages: string[];
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  const fallbackImages = items
-    .map((item) => item.imageUrl)
-    .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
-  const rotatingImages = backgroundImages.length ? backgroundImages : fallbackImages;
+  const rotatingImages = backgroundImages;
   const activeBackgroundImage = rotatingImages.length
     ? rotatingImages[activeIndex % rotatingImages.length]
     : null;
-  const mobileItem = items[0] || null;
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
@@ -71,37 +66,23 @@ export function HomeHeroVisual({
   return (
     <div className="relative mx-auto w-full max-w-[780px]">
       <div className="relative min-h-[320px] sm:min-h-[370px] lg:min-h-[500px]">
-        <div className="absolute inset-y-3 left-[8%] right-0 sm:left-[11%] lg:left-[18%]">
+        <div className="absolute inset-0">
           <div
             className="absolute inset-0 overflow-hidden bg-[linear-gradient(135deg,rgba(229,222,213,0.98),rgba(205,196,184,0.9))] shadow-[0_24px_48px_rgba(61,39,14,0.14)]"
             style={{ clipPath: zoneTwoClipPath }}
           >
-            {rotatingImages.length ? (
-              rotatingImages.map((imageUrl, index) => {
-                const isActive = activeBackgroundImage === imageUrl;
-
-                return (
-                  <div
-                    key={imageUrl}
-                    className={`absolute inset-0 transition-opacity duration-[1800ms] ${
-                      isActive ? "opacity-100" : "opacity-0"
-                    }`}
-                  >
-                    <Image
-                      src={imageUrl}
-                      alt={`Ocean Motors hero background ${index + 1}`}
-                      fill
-                      priority={index === 0}
-                      sizes="(min-width: 1280px) 42vw, (min-width: 1024px) 46vw, 100vw"
-                      className={`object-cover object-center transition-transform duration-[5000ms] ${
-                        isActive && isDesktop && !prefersReducedMotion
-                          ? "scale-[1.03]"
-                          : "scale-100"
-                      }`}
-                    />
-                  </div>
-                );
-              })
+            {activeBackgroundImage ? (
+              <Image
+                key={activeBackgroundImage}
+                src={activeBackgroundImage}
+                alt={`Ocean Motors hero background ${activeIndex + 1}`}
+                fill
+                priority={activeIndex === 0}
+                sizes="(min-width: 1280px) 560px, (min-width: 1024px) 44vw, 100vw"
+                className={`object-cover object-center transition-transform duration-[5000ms] ${
+                  isDesktop && !prefersReducedMotion ? "scale-[1.03]" : "scale-100"
+                }`}
+              />
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_32%,rgba(255,255,255,0.4),transparent_22%),linear-gradient(125deg,rgba(230,223,214,0.95),rgba(193,183,170,0.92))]" />
             )}
@@ -110,8 +91,20 @@ export function HomeHeroVisual({
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_28%,rgba(255,255,255,0.26),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(255,255,255,0.14),transparent_22%),linear-gradient(135deg,rgba(255,255,255,0.14),transparent_44%,rgba(255,255,255,0.04)_72%,transparent_100%)]" />
           </div>
 
-          <div className="pointer-events-none absolute left-[24%] right-0 top-0 h-px bg-stone-900/36" />
-          <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-stone-900/30" />
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+            aria-hidden="true"
+          >
+            <path
+              d={zoneTwoBorderPath}
+              fill="none"
+              stroke="rgba(41, 37, 36, 0.34)"
+              strokeWidth="0.7"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
 
           {rotatingImages.length > 1 ? (
             <div className="absolute bottom-5 right-4 z-20 hidden items-center gap-2 lg:flex">
