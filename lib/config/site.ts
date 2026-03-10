@@ -9,7 +9,7 @@ export const siteConfig = {
   phoneDisplay: "+254 700 123 456",
   phoneHref: "tel:+254700123456",
   whatsappNumber: "254700123456",
-  whatsappLabel: "WhatsApp sales",
+  whatsappLabel: "Chat on WhatsApp",
   email: "hello@oceanmotors.demo",
   salesEmail: "sales@oceanmotors.demo",
   address: "Kizingo, Mombasa",

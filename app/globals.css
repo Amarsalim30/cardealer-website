@@ -57,6 +57,44 @@ button {
   padding-block: 4.5rem;
 }
 
+.homepage-flow > .section-shell {
+  padding-block: 3rem;
+}
+
+.homepage-flow > .section-shell:first-of-type {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.homepage-flow > .section-shell:first-of-type + .section-shell {
+  padding-top: 1rem;
+}
+
+.homepage-flow > .section-shell:last-of-type {
+  padding-top: 3rem;
+  padding-bottom: 5.5rem;
+}
+
+@media (min-width: 640px) {
+  .homepage-flow > .section-shell {
+    padding-block: 3.5rem;
+  }
+
+  .homepage-flow > .section-shell:first-of-type {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .homepage-flow > .section-shell:first-of-type + .section-shell {
+    padding-top: 1.25rem;
+  }
+
+  .homepage-flow > .section-shell:last-of-type {
+    padding-top: 3.25rem;
+    padding-bottom: 5rem;
+  }
+}
+
 .surface-card {
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--card) 92%, white 8%);

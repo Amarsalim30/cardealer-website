@@ -4,7 +4,6 @@ import {
   CircleGauge,
   Cog,
   Fuel,
-  MessageCircleMore,
   Phone,
 } from "lucide-react";
 
@@ -14,6 +13,7 @@ import { SectionHeading } from "@/components/marketing/section-heading";
 import { VehicleCard } from "@/components/inventory/vehicle-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { siteConfig } from "@/lib/config/site";
 import {
   getHomepageCollections,
@@ -98,23 +98,21 @@ export default async function Home() {
     <>
       <JsonLd data={breadcrumbJsonLd} />
 
-      <section className="section-shell pb-8 pt-2">
+      <main className="homepage-flow">
+        <section className="section-shell">
         <div className="container-shell">
-          <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
+          <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-start lg:gap-9">
             <div className="space-y-5 lg:space-y-6">
               <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary/80">
-                Mombasa showroom
+                Mombasa dealership
               </p>
-              <h1 className="display-font max-w-2xl text-balance text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">
-                Find quality cars in Mombasa without the usual friction.
-              </h1>
+              <h1 className="display-font max-w-2xl text-balance text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">Browse Cars Available in Mombasa Today. </h1>
               <p className="max-w-[36rem] text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
-                Used, imported, and traded-in vehicles with cleaner details and
-                faster ways to contact sales.
+                SUVs, sedans, and imported units ready for inspection. Compare vehicles, check details, and contact our team instantly.
               </p>
             </div>
 
-            <div className="relative flex min-h-[280px] items-center justify-center sm:min-h-[340px] lg:min-h-[500px]">
+            <div className="relative flex min-h-[250px] items-center justify-center sm:min-h-[310px] lg:min-h-[450px]">
               <div className="absolute inset-x-8 bottom-14 h-24 rounded-full bg-[radial-gradient(circle,_rgba(165,90,42,0.18)_0%,_rgba(165,90,42,0.03)_68%,_transparent_100%)] blur-3xl" />
               <div className="absolute inset-x-16 bottom-10 h-10 rounded-full bg-stone-950/10 blur-2xl" />
               <Image
@@ -128,14 +126,14 @@ export default async function Home() {
             </div>
           </div>
 
-          <div className="relative z-20 mt-6 space-y-5 lg:-mt-14">
+          <div className="relative z-20 mt-5 space-y-4 lg:-mt-12">
             <form
               action="/inventory"
               className="surface-card grid gap-2 rounded-[28px] border border-white/70 bg-white/92 p-3 shadow-[0_22px_55px_rgba(61,39,14,0.1)] backdrop-blur sm:grid-cols-2 sm:gap-3 sm:p-4 xl:grid-cols-[1.25fr_repeat(3,minmax(0,0.82fr))_auto]"
             >
               <input
                 name="q"
-                placeholder="Search by make, model, or keyword"
+                placeholder="Search Toyota, Prado, Land Cruiser..."
                 className="h-11 rounded-2xl border border-border bg-white/80 px-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-primary/40"
               />
               <select
@@ -218,13 +216,13 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section-shell pt-6">
-        <div className="container-shell space-y-8">
+        <section className="section-shell">
+        <div className="container-shell space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading
               eyebrow={collections.featured.length ? "Featured listings" : "Latest arrivals"}
               title="Cars buyers can enquire about in one click"
-              description="Keep the decision path simple: clear photo, quiet stock labels, compact specs, one primary details CTA, and WhatsApp as the fastest next step."
+              description="Quickly browse vehicles ready for viewing in Mombasa. Tap View Details or contact us instantly on WhatsApp."
             />
             <Button asChild variant="secondary">
               <Link href="/inventory">Browse all inventory</Link>
@@ -318,7 +316,7 @@ export default async function Home() {
                           aria-label={`WhatsApp about ${vehicle.title}`}
                           className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_8px_18px_rgba(37,211,102,0.22)] transition-colors hover:bg-[#1fb85a]"
                         >
-                          <MessageCircleMore className="size-4.5" />
+                          <WhatsAppIcon className="size-4.5" />
                         </a>
                         <a
                           href={siteConfig.phoneHref}
@@ -339,23 +337,23 @@ export default async function Home() {
 
       <section className="section-shell bg-white/50">
         <div className="container-shell grid gap-6 lg:grid-cols-2">
-          <Card className="rounded-[30px] p-8">
+          <Card className="rounded-[30px] p-7 sm:p-8">
             <SectionHeading
               eyebrow="Financing"
               title="Short financing enquiries, practical follow-up"
               description="The financing path stays simple: ask about pricing, affordability, and next steps without turning the website into a banking workflow."
             />
-            <Button asChild className="mt-8">
+            <Button asChild className="mt-6">
               <Link href="/financing">Ask About Financing</Link>
             </Button>
           </Card>
-          <Card className="rounded-[30px] p-8">
+          <Card className="rounded-[30px] p-7 sm:p-8">
             <SectionHeading
               eyebrow="Trade-in"
               title="Use trade-ins as a conversion path, not an afterthought"
               description="Buyers can share their current vehicle details in one quick form, giving sales staff a stronger opening for follow-up."
             />
-            <Button asChild className="mt-8">
+            <Button asChild className="mt-6">
               <Link href="/trade-in">Value Your Trade</Link>
             </Button>
           </Card>
@@ -363,7 +361,7 @@ export default async function Home() {
       </section>
 
       <section className="section-shell">
-        <div className="container-shell grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="container-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
           <SectionHeading
             eyebrow="Delivered units"
             title="Sold and delivered stock keeps trust visible"
@@ -387,7 +385,7 @@ export default async function Home() {
       </section>
 
       <section className="section-shell bg-white/50">
-        <div className="container-shell grid gap-12 lg:grid-cols-[0.85fr_1.15fr]">
+        <div className="container-shell grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
           <SectionHeading
             eyebrow="Testimonials"
             title="Trust-building copy stays close to the buyer journey"
@@ -409,10 +407,10 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section-shell pb-28 sm:pb-24">
+      <section className="section-shell">
         <div className="container-shell">
-          <Card className="rounded-[34px] border border-stone-900 bg-stone-950 px-8 py-10 text-white">
-            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <Card className="rounded-[34px] border border-stone-900 bg-stone-950 px-7 py-8 text-white sm:px-8 sm:py-9">
+            <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-400">
                   Contact strip
@@ -421,7 +419,7 @@ export default async function Home() {
                   Ready to shortlist a vehicle or ask about availability?
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-300">
-                  {locations[0]?.name || "Mombasa Showroom"} is open during
+                  {locations[0]?.name || "Mombasa dealership"} is open during
                   business hours, and WhatsApp support is available for fast
                   inventory questions.
                 </p>
@@ -442,6 +440,7 @@ export default async function Home() {
           </Card>
         </div>
       </section>
+      </main>
 
       <FloatingWhatsAppButton whatsappUrl={homepageWhatsAppUrl} />
     </>

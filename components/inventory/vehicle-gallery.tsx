@@ -19,12 +19,12 @@ export function VehicleGallery({
     return (
       <div className="rounded-[32px] border border-border bg-[linear-gradient(135deg,#f5f5f4,white)] p-10 text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-primary">
-          Gallery pending
+          Photos coming soon
         </p>
         <h2 className="mt-4 text-3xl font-semibold text-stone-950">{title}</h2>
         <p className="mt-4 text-sm leading-7 text-stone-600">
-          Images for this vehicle have not been synced yet. Use the admin stock
-          code workflow to pull the Cloudinary folder into the listing.
+          We are still preparing the photo gallery for this vehicle. Contact
+          sales for current photos, availability, and viewing details.
         </p>
       </div>
     );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, MessageCircle, Phone } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/layout/json-ld";
@@ -13,6 +13,7 @@ import { VehicleGallery } from "@/components/inventory/vehicle-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import { siteConfig } from "@/lib/config/site";
 import {
   getSimilarVehicles,
@@ -127,7 +128,7 @@ export default async function VehicleDetailPage({
                   </Button>
                   <Button asChild variant="dark" className="w-full">
                     <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <MessageCircle className="size-4" />
+                      <WhatsAppIcon className="size-4" />
                       WhatsApp This Car
                     </a>
                   </Button>
@@ -227,7 +228,7 @@ export default async function VehicleDetailPage({
                   </Button>
                   <Button asChild variant="secondary" className="w-full">
                     <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <MessageCircle className="size-4" />
+                      <WhatsAppIcon className="size-4" />
                       WhatsApp Sales
                     </a>
                   </Button>

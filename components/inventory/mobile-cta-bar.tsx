@@ -1,6 +1,7 @@
-import { MessageCircle, Phone } from "lucide-react";
+import { Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 
 export function MobileCtaBar({
   whatsappUrl,
@@ -14,7 +15,7 @@ export function MobileCtaBar({
       <div className="container-shell flex gap-3">
         <Button asChild className="flex-1">
           <a href={whatsappUrl} target="_blank" rel="noreferrer">
-            <MessageCircle className="size-4" />
+            <WhatsAppIcon className="size-4" />
             WhatsApp
           </a>
         </Button>

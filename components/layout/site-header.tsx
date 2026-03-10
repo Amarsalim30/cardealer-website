@@ -31,7 +31,7 @@ export function SiteHeader() {
               {siteConfig.shortName}
             </p>
             <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-              Mombasa showroom
+              Mombasa dealership
             </p>
           </div>
         </Link>
