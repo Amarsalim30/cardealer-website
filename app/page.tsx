@@ -58,6 +58,13 @@ const deliveredFallbackSeeds: DeliveredFallbackSeed[] = [
   },
 ];
 
+const heroBackgroundImages = [
+  "https://res.cloudinary.com/dlyrnhpcn/image/upload/v1772902438/1_rsugnm.jpg",
+  "https://res.cloudinary.com/dlyrnhpcn/image/upload/v1772901994/3_x83v11.jpg",
+  "https://res.cloudinary.com/dlyrnhpcn/image/upload/v1772902428/4_mmphkh.jpg",
+  "https://res.cloudinary.com/dlyrnhpcn/image/upload/v1772901065/3_gae6fj.jpg",
+];
+
 function getShowcaseStockLabel(vehicle: Vehicle) {
   switch (vehicle.stockCategory) {
     case "imported":
@@ -228,8 +235,26 @@ export default async function Home() {
                 <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary/80">
                   Mombasa dealership
                 </p>
-                <h1 className="display-font max-w-2xl text-balance text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">
-                  Browse Cars Available in Mombasa Today.
+                <h1 className="display-font max-w-2xl text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">
+                  <span className="block">Browse Cars</span>
+                  <span className="block">Available in</span>
+                  <span className="block overflow-visible">
+                    M
+                    <span className="relative inline-block overflow-visible">
+                      <span className="pointer-events-none absolute inset-[-0.08em] hidden rounded-full border border-primary/10 bg-[radial-gradient(circle,rgba(214,202,188,0.28)_0%,rgba(214,202,188,0.12)_58%,transparent_76%)] lg:block" />
+                      <span className="relative z-10">o</span>
+                      <Image
+                        src="/carHero.png"
+                        alt=""
+                        width={900}
+                        height={580}
+                        priority
+                        className="pointer-events-none absolute left-[-0.72em] top-[0.34em] hidden w-[1.18em] max-w-none object-contain drop-shadow-[0_12px_16px_rgba(20,15,11,0.22)] lg:block"
+                      />
+                      <span className="pointer-events-none absolute left-[-0.34em] top-[0.78em] hidden h-[0.1em] w-[0.78em] rounded-full bg-[radial-gradient(circle,rgba(28,22,17,0.18),rgba(28,22,17,0.05)_60%,transparent_100%)] blur-[0.15em] lg:block" />
+                    </span>
+                    mbasa Today.
+                  </span>
                 </h1>
                 <p className="max-w-[36rem] text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
                   SUVs, sedans, and imported units ready for inspection. Compare
@@ -237,7 +262,10 @@ export default async function Home() {
                 </p>
               </div>
 
-              <HomeHeroVisual items={heroRailItems} />
+              <HomeHeroVisual
+                items={heroRailItems}
+                backgroundImages={heroBackgroundImages}
+              />
             </div>
 
             <div className="relative z-20 mt-5 space-y-4 lg:-mt-12">

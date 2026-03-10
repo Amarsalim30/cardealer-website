@@ -14,27 +14,27 @@ export type HeroRailItem = {
   stockLabel: string;
 };
 
-type HeroRailItemWithImage = HeroRailItem & {
-  imageUrl: string;
-};
-
 const zoneTwoClipPath = "polygon(24% 0, 100% 0, 100% 100%, 0 100%)";
 
-function hasImage(item: HeroRailItem): item is HeroRailItemWithImage {
-  return Boolean(item.imageUrl);
-}
-
-export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
+export function HomeHeroVisual({
+  items,
+  backgroundImages,
+}: {
+  items: HeroRailItem[];
+  backgroundImages: string[];
+}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-  const imageItems = items.filter(hasImage);
-  const rotatingItems = imageItems.length ? imageItems : items;
-  const activeItem = rotatingItems.length
-    ? rotatingItems[activeIndex % rotatingItems.length]
+  const fallbackImages = items
+    .map((item) => item.imageUrl)
+    .filter((imageUrl): imageUrl is string => Boolean(imageUrl));
+  const rotatingImages = backgroundImages.length ? backgroundImages : fallbackImages;
+  const activeBackgroundImage = rotatingImages.length
+    ? rotatingImages[activeIndex % rotatingImages.length]
     : null;
-  const mobileItem = rotatingItems[0] || items[0] || null;
+  const mobileItem = items[0] || null;
 
   useEffect(() => {
     const desktopQuery = window.matchMedia("(min-width: 1024px)");
@@ -57,16 +57,16 @@ export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
   }, []);
 
   useEffect(() => {
-    if (!isDesktop || prefersReducedMotion || rotatingItems.length <= 1) {
+    if (!isDesktop || prefersReducedMotion || rotatingImages.length <= 1) {
       return;
     }
 
     const rotation = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % rotatingItems.length);
+      setActiveIndex((current) => (current + 1) % rotatingImages.length);
     }, 5000);
 
     return () => window.clearInterval(rotation);
-  }, [isDesktop, prefersReducedMotion, rotatingItems.length]);
+  }, [isDesktop, prefersReducedMotion, rotatingImages.length]);
 
   return (
     <div className="relative mx-auto w-full max-w-[780px]">
@@ -76,20 +76,20 @@ export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
             className="absolute inset-0 overflow-hidden bg-[linear-gradient(135deg,rgba(229,222,213,0.98),rgba(205,196,184,0.9))] shadow-[0_24px_48px_rgba(61,39,14,0.14)]"
             style={{ clipPath: zoneTwoClipPath }}
           >
-            {imageItems.length ? (
-              imageItems.map((item, index) => {
-                const isActive = activeItem?.id === item.id;
+            {rotatingImages.length ? (
+              rotatingImages.map((imageUrl, index) => {
+                const isActive = activeBackgroundImage === imageUrl;
 
                 return (
                   <div
-                    key={item.id}
+                    key={imageUrl}
                     className={`absolute inset-0 transition-opacity duration-[1800ms] ${
                       isActive ? "opacity-100" : "opacity-0"
                     }`}
                   >
                     <Image
-                      src={item.imageUrl}
-                      alt={`${item.year} ${item.title}`}
+                      src={imageUrl}
+                      alt={`Ocean Motors hero background ${index + 1}`}
                       fill
                       priority={index === 0}
                       sizes="(min-width: 1280px) 42vw, (min-width: 1024px) 46vw, 100vw"
@@ -113,14 +113,14 @@ export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
           <div className="pointer-events-none absolute left-[24%] right-0 top-0 h-px bg-stone-900/36" />
           <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-stone-900/30" />
 
-          {imageItems.length > 1 ? (
+          {rotatingImages.length > 1 ? (
             <div className="absolute bottom-5 right-4 z-20 hidden items-center gap-2 lg:flex">
-              {imageItems.map((item) => {
-                const isActive = activeItem?.id === item.id;
+              {rotatingImages.map((imageUrl) => {
+                const isActive = activeBackgroundImage === imageUrl;
 
                 return (
                   <span
-                    key={item.id}
+                    key={imageUrl}
                     className={`h-1.5 rounded-full transition-all duration-500 ${
                       isActive ? "w-7 bg-white/92" : "w-2.5 bg-white/40"
                     }`}
@@ -131,25 +131,6 @@ export function HomeHeroVisual({ items }: { items: HeroRailItem[] }) {
           ) : null}
         </div>
 
-        <div className="absolute left-[-7%] top-[12%] z-20 h-36 w-36 sm:left-[-3%] sm:h-44 sm:w-44 lg:left-[-13%] lg:top-[11%] lg:h-[14rem] lg:w-[14rem]">
-          <div className="absolute inset-[-14%] rounded-full bg-[radial-gradient(circle,rgba(180,140,101,0.12)_0%,rgba(180,140,101,0.05)_58%,transparent_74%)] blur-sm" />
-          <div className="absolute inset-[-5%] rounded-full border border-primary/16 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.16),transparent_72%)]" />
-          <div className="absolute inset-0 rounded-full border border-white/80 bg-[radial-gradient(circle_at_46%_40%,rgba(255,255,255,0.99),rgba(246,239,232,0.88)_42%,rgba(225,214,200,0.62)_72%,rgba(188,165,137,0.14)_100%)] shadow-[0_20px_40px_rgba(61,39,14,0.14)]" />
-          <div className="absolute inset-[10%] rounded-full border border-white/70 bg-[radial-gradient(circle_at_48%_40%,rgba(255,255,255,0.96),rgba(241,233,224,0.82)_48%,rgba(216,202,184,0.54)_78%,rgba(176,151,120,0.12)_100%)] shadow-[inset_0_18px_28px_rgba(255,255,255,0.34),inset_0_-22px_34px_rgba(97,74,48,0.08)]" />
-          <div className="absolute inset-[24%] rounded-full border border-white/60 bg-[radial-gradient(circle_at_50%_42%,rgba(255,255,255,0.92),rgba(244,237,229,0.72)_56%,rgba(206,188,164,0.24)_100%)] shadow-[inset_0_12px_24px_rgba(255,255,255,0.28)]" />
-          <div className="absolute inset-[32%] rounded-full bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.42),transparent_68%)]" />
-          <div className="pointer-events-none absolute bottom-[20%] left-[14%] right-[18%] h-[14%] rounded-full bg-[radial-gradient(circle,rgba(121,100,76,0.22),rgba(121,100,76,0.05)_68%,transparent_100%)] blur-lg" />
-
-          <Image
-            src="/carHero.png"
-            alt=""
-            width={900}
-            height={580}
-            priority
-            className="pointer-events-none absolute left-[-38%] top-[37%] z-30 w-[124%] max-w-none object-contain drop-shadow-[0_18px_22px_rgba(20,15,11,0.22)]"
-          />
-          <div className="pointer-events-none absolute bottom-[15%] left-[4%] z-10 h-7 w-[66%] rounded-full bg-[radial-gradient(circle,rgba(28,22,17,0.18),rgba(28,22,17,0.05)_60%,transparent_100%)] blur-xl" />
-        </div>
       </div>
 
       {mobileItem ? (
