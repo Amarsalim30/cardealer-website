@@ -1,9 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ArrowRight,
-  CarFront,
-} from "lucide-react";
 
 import { JsonLd } from "@/components/layout/json-ld";
 import { FloatingWhatsAppButton } from "@/components/marketing/floating-whatsapp-button";
@@ -11,7 +7,7 @@ import { SectionHeading } from "@/components/marketing/section-heading";
 import { VehicleCard } from "@/components/inventory/vehicle-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { homeStats, siteConfig } from "@/lib/config/site";
+import { siteConfig } from "@/lib/config/site";
 import {
   getHomepageCollections,
   getLocations,
@@ -19,26 +15,6 @@ import {
 } from "@/lib/data/repository";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
 import { buildWhatsAppUrl } from "@/lib/utils";
-
-const categoryLinks = [
-  {
-    title: "Used Cars",
-    href: "/inventory/used",
-    description: "Well-presented ready stock for fast decisions and viewing.",
-  },
-  {
-    title: "Imported Units",
-    href: "/inventory/imported",
-    description:
-      "Fresh imports and available-for-importation units with sourcing support.",
-  },
-  {
-    title: "Traded-in Cars",
-    href: "/inventory/traded-in",
-    description:
-      "Practical vehicles with inspection notes and budget-friendly positioning.",
-  },
-];
 
 export default async function Home() {
   const [collections, reviews, locations] = await Promise.all([
@@ -57,129 +33,87 @@ export default async function Home() {
     <>
       <JsonLd data={breadcrumbJsonLd} />
 
-      <section className="section-shell pb-8 pt-10">
-        <div className="container-shell space-y-6">
-          <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
-            <div className="space-y-6">
-              <h1 className="display-font text-balance text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">
+      <section className="section-shell pb-8 pt-2">
+        <div className="container-shell">
+          <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-start">
+            <div className="space-y-5 lg:space-y-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary/80">
+                Mombasa showroom
+              </p>
+              <h1 className="display-font max-w-2xl text-balance text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">
                 Find quality cars in Mombasa without the usual friction.
               </h1>
-              <p className="max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
+              <p className="max-w-[36rem] text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
                 Used, imported, and traded-in vehicles with cleaner details and
                 faster ways to contact sales.
               </p>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button asChild className="h-12 min-w-44">
-                  <Link href="/inventory">
-                    Browse Inventory
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="secondary"
-                  className="h-12 min-w-44 border-stone-200 bg-white/45 text-stone-700 hover:bg-white/70 hover:text-stone-900"
-                >
-                  <Link href="/inventory/imported">Explore Imported Units</Link>
-                </Button>
-              </div>
             </div>
 
-            <div className="relative">
-              <div className="rounded-[34px] p-4 sm:p-6 lg:p-8">
-                <Image
-                  src="/carHero.png"
-                  alt="Toyota Land Cruiser Prado hero"
-                  width={1400}
-                  height={900}
-                  priority
-                  className="mx-auto w-full max-w-[640px] object-contain drop-shadow-[0_28px_34px_rgba(61,39,14,0.14)]"
-                />
-              </div>
+            <div className="relative flex min-h-[280px] items-center justify-center sm:min-h-[340px] lg:min-h-[500px]">
+              <div className="absolute inset-x-8 bottom-14 h-24 rounded-full bg-[radial-gradient(circle,_rgba(165,90,42,0.18)_0%,_rgba(165,90,42,0.03)_68%,_transparent_100%)] blur-3xl" />
+              <div className="absolute inset-x-16 bottom-10 h-10 rounded-full bg-stone-950/10 blur-2xl" />
+              <Image
+                src="/carHero.png"
+                alt="Toyota Land Cruiser Prado hero"
+                width={1400}
+                height={900}
+                priority
+                className="relative z-10 mx-auto w-full max-w-[640px] object-contain drop-shadow-[0_28px_34px_rgba(61,39,14,0.16)] lg:translate-x-6"
+              />
             </div>
           </div>
 
-          <form
-            action="/inventory"
-            className="surface-card grid gap-2 rounded-[30px] border border-border bg-white/95 p-3 sm:gap-3 sm:p-4 md:grid-cols-[1.3fr_repeat(3,1fr)_auto]"
-          >
-            <input
-              name="q"
-              placeholder="Search by make, model, or keyword"
-              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
-            />
-            <select
-              name="make"
-              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
-              defaultValue=""
+          <div className="relative z-20 mt-6 space-y-5 lg:-mt-14">
+            <form
+              action="/inventory"
+              className="surface-card grid gap-2 rounded-[28px] border border-white/70 bg-white/92 p-3 shadow-[0_22px_55px_rgba(61,39,14,0.1)] backdrop-blur sm:grid-cols-2 sm:gap-3 sm:p-4 xl:grid-cols-[1.25fr_repeat(3,minmax(0,0.82fr))_auto]"
             >
-              <option value="">Any make</option>
-              <option value="Toyota">Toyota</option>
-              <option value="Land Rover">Land Rover</option>
-              <option value="Mazda">Mazda</option>
-              <option value="Subaru">Subaru</option>
-              <option value="Nissan">Nissan</option>
-              <option value="BMW">BMW</option>
-              <option value="Ford">Ford</option>
-            </select>
-            <select
-              name="category"
-              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
-              defaultValue=""
-            >
-              <option value="">All categories</option>
-              <option value="used">Used</option>
-              <option value="new">New</option>
-              <option value="imported">Imported</option>
-              <option value="traded-in">Traded-in</option>
-            </select>
-            <select
-              name="sort"
-              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
-              defaultValue="latest"
-            >
-              <option value="latest">Latest stock</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
-            </select>
-            <Button type="submit" className="h-11 px-5">
-              Search Inventory
-            </Button>
-          </form>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="rounded-[24px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-                In stock
-              </p>
-              <p className="mt-3 text-3xl font-semibold text-stone-950">
-                {homeStats.inStockCount}+
-              </p>
-            </Card>
-            <Card className="rounded-[24px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-                Delivered
-              </p>
-              <p className="mt-3 text-3xl font-semibold text-stone-950">
-                {homeStats.deliveredCount}+
-              </p>
-            </Card>
-            <Card className="rounded-[24px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-                Finance partners
-              </p>
-              <p className="mt-3 text-3xl font-semibold text-stone-950">
-                {homeStats.financePartners}
-              </p>
-            </Card>
-            <Card className="rounded-[24px] p-5">
-              <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-                Typical response
-              </p>
-              <p className="mt-3 text-3xl font-semibold text-stone-950">
-                {homeStats.responseTime}
-              </p>
-            </Card>
+              <input
+                name="q"
+                placeholder="Search by make, model, or keyword"
+                className="h-11 rounded-2xl border border-border bg-white/80 px-4 text-sm outline-none transition-colors placeholder:text-stone-400 focus:border-primary/40"
+              />
+              <select
+                name="make"
+                className="h-11 rounded-2xl border border-border bg-white/80 px-4 text-sm outline-none transition-colors focus:border-primary/40"
+                defaultValue=""
+              >
+                <option value="">Any make</option>
+                <option value="Toyota">Toyota</option>
+                <option value="Land Rover">Land Rover</option>
+                <option value="Mazda">Mazda</option>
+                <option value="Subaru">Subaru</option>
+                <option value="Nissan">Nissan</option>
+                <option value="BMW">BMW</option>
+                <option value="Ford">Ford</option>
+              </select>
+              <select
+                name="category"
+                className="h-11 rounded-2xl border border-border bg-white/80 px-4 text-sm outline-none transition-colors focus:border-primary/40"
+                defaultValue=""
+              >
+                <option value="">All categories</option>
+                <option value="used">Used</option>
+                <option value="new">New</option>
+                <option value="imported">Imported</option>
+                <option value="traded-in">Traded-in</option>
+              </select>
+              <select
+                name="sort"
+                className="h-11 rounded-2xl border border-border bg-white/80 px-4 text-sm outline-none transition-colors focus:border-primary/40"
+                defaultValue="latest"
+              >
+                <option value="latest">Latest stock</option>
+                <option value="price-asc">Price: low to high</option>
+                <option value="price-desc">Price: high to low</option>
+              </select>
+              <Button
+                type="submit"
+                className="h-11 px-5 sm:col-span-2 xl:col-span-1"
+              >
+                Search Inventory
+              </Button>
+            </form>
           </div>
 
           {/* <Card className="rounded-[32px] border border-stone-900 bg-stone-950 p-8 text-white">
@@ -220,41 +154,12 @@ export default async function Home() {
       </section>
 
       <section className="section-shell pt-6">
-        <div className="container-shell">
-          <SectionHeading
-            eyebrow="Quick paths"
-            title="Browse the categories buyers ask about most"
-            description="Jump straight to used, imported, or traded-in stock and compare options in seconds."
-          />
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {categoryLinks.map((item) => (
-              <Card key={item.href} className="rounded-[28px] p-6">
-                <CarFront className="size-10 text-primary" />
-                <h3 className="mt-6 text-xl font-semibold text-stone-950">
-                  {item.title}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-stone-600">
-                  {item.description}
-                </p>
-                <Button asChild variant="secondary" className="mt-6">
-                  <Link href={item.href}>
-                    Explore
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-shell">
         <div className="container-shell space-y-12">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <SectionHeading
               eyebrow="Featured listings"
-              title="High-priority stock with stronger conversion intent"
-              description="Featured units lead with sharper visuals, cleaner summaries, and direct access to quote and WhatsApp enquiries."
+              title="Top Picks From Our Current Inventory"
+              description="Browse our most requested cars in Mombasa. Clean imports, trusted trade-ins, and quick WhatsApp access to pricing and availability."
             />
             <Button asChild variant="secondary">
               <Link href="/inventory">Browse all inventory</Link>
