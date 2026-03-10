@@ -58,18 +58,15 @@ export default async function Home() {
       <JsonLd data={breadcrumbJsonLd} />
 
       <section className="section-shell pb-8 pt-10">
-        <div className="container-shell space-y-8">
-          <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
+        <div className="container-shell space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
             <div className="space-y-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-                Mombasa dealership stock
-              </p>
               <h1 className="display-font text-balance text-4xl leading-tight text-stone-950 sm:text-5xl lg:text-6xl">
                 Find quality cars in Mombasa without the usual friction.
               </h1>
               <p className="max-w-xl text-base leading-7 text-stone-600 sm:text-lg sm:leading-8">
-                Used, imported, and traded-in vehicles presented with cleaner
-                detail, stronger trust signals, and quick ways to contact sales.
+                Used, imported, and traded-in vehicles with cleaner details and
+                faster ways to contact sales.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button asChild className="h-12 min-w-44">
@@ -78,21 +75,25 @@ export default async function Home() {
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
-                <Button asChild variant="secondary" className="h-12 min-w-44">
+                <Button
+                  asChild
+                  variant="secondary"
+                  className="h-12 min-w-44 border-stone-200 bg-white/45 text-stone-700 hover:bg-white/70 hover:text-stone-900"
+                >
                   <Link href="/inventory/imported">Explore Imported Units</Link>
                 </Button>
               </div>
             </div>
 
             <div className="relative">
-              <div className="rounded-[34px] bg-[radial-gradient(circle_at_50%_56%,rgba(255,255,255,0.95),rgba(248,242,234,0.68)_54%,transparent_78%)] p-4 sm:p-6 lg:p-8">
+              <div className="rounded-[34px] p-4 sm:p-6 lg:p-8">
                 <Image
                   src="/carHero.png"
                   alt="Toyota Land Cruiser Prado hero"
                   width={1400}
                   height={900}
                   priority
-                  className="mx-auto w-full max-w-[640px] object-contain"
+                  className="mx-auto w-full max-w-[640px] object-contain drop-shadow-[0_28px_34px_rgba(61,39,14,0.14)]"
                 />
               </div>
             </div>
@@ -100,16 +101,16 @@ export default async function Home() {
 
           <form
             action="/inventory"
-            className="surface-card grid gap-3 rounded-[30px] border border-border bg-white/95 p-4 sm:gap-4 sm:p-5 md:grid-cols-[1.3fr_repeat(3,1fr)_auto]"
+            className="surface-card grid gap-2 rounded-[30px] border border-border bg-white/95 p-3 sm:gap-3 sm:p-4 md:grid-cols-[1.3fr_repeat(3,1fr)_auto]"
           >
             <input
               name="q"
               placeholder="Search by make, model, or keyword"
-              className="h-12 rounded-2xl border border-border px-4 text-sm outline-none"
+              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
             />
             <select
               name="make"
-              className="h-12 rounded-2xl border border-border px-4 text-sm outline-none"
+              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
               defaultValue=""
             >
               <option value="">Any make</option>
@@ -123,7 +124,7 @@ export default async function Home() {
             </select>
             <select
               name="category"
-              className="h-12 rounded-2xl border border-border px-4 text-sm outline-none"
+              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
               defaultValue=""
             >
               <option value="">All categories</option>
@@ -134,14 +135,14 @@ export default async function Home() {
             </select>
             <select
               name="sort"
-              className="h-12 rounded-2xl border border-border px-4 text-sm outline-none"
+              className="h-11 rounded-2xl border border-border px-4 text-sm outline-none"
               defaultValue="latest"
             >
               <option value="latest">Latest stock</option>
               <option value="price-asc">Price: low to high</option>
               <option value="price-desc">Price: high to low</option>
             </select>
-            <Button type="submit" className="h-12">
+            <Button type="submit" className="h-11 px-5">
               Search Inventory
             </Button>
           </form>

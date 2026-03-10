@@ -10,6 +10,9 @@ import { navigationLinks, siteConfig } from "@/lib/config/site";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
+  const headerLinks = navigationLinks.filter(
+    (link) => link.href !== "/" && link.href !== "/inventory",
+  );
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-[#fff8f2]/90 backdrop-blur">
@@ -34,7 +37,7 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">
-          {navigationLinks.map((link) => (
+          {headerLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -71,7 +74,7 @@ export function SiteHeader() {
       {open ? (
         <div className="border-t border-border bg-white/95 lg:hidden">
           <div className="container-shell flex flex-col gap-2 py-4">
-            {navigationLinks.map((link) => (
+            {headerLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
