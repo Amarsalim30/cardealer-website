@@ -617,37 +617,43 @@ export default async function Home() {
 
         <section className="section-shell bg-stone-50/50">
           <div className="container-shell grid gap-6 lg:grid-cols-2">
-            <Card className="group flex h-full flex-col justify-between rounded-[30px] border border-stone-200 p-7 shadow-[0_8px_26px_rgba(28,25,23,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-[#e5d3c7] hover:shadow-[0_16px_36px_rgba(28,25,23,0.09)] sm:p-9">
+            <Card className="group flex h-full flex-col justify-between rounded-[32px] border border-stone-200/60 bg-white p-8 shadow-[0_8px_30px_rgba(28,25,23,0.03)] transition-all duration-400 ease-out hover:-translate-y-1.5 hover:border-stone-300/80 hover:shadow-[0_20px_40px_rgba(28,25,23,0.08)] sm:p-10">
               <div className="flex flex-1 flex-col">
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3E9E2] text-primary">
-                  <Landmark className="size-6" />
+                <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-[20px] bg-stone-100 text-stone-600 transition-colors duration-400 group-hover:bg-primary/10 group-hover:text-primary">
+                  <Landmark className="size-7" />
                 </div>
-                <SectionHeading
-                  eyebrow="Financing"
-                  title="Vehicle Financing Available"
-                  description="Ask about deposit options, monthly payment plans, and the next steps before you commit to a vehicle."
-                />
+                <div>
+                  <h3 className="mb-3 text-2xl font-bold tracking-tight text-stone-950 sm:text-[1.75rem]">
+                    Vehicle Financing Available
+                  </h3>
+                  <p className="max-w-[85%] text-[0.95rem] leading-relaxed text-stone-500">
+                    Ask about deposit options, monthly payment plans, and the next steps before you commit to a vehicle.
+                  </p>
+                </div>
               </div>
-              <div className="mt-8 pt-2">
-                <Button asChild>
+              <div className="mt-10 pt-2">
+                <Button asChild variant="outline" className="h-12 rounded-xl border-stone-200 px-6 text-[0.9rem] font-semibold text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900">
                   <Link href="/financing">Ask About Financing</Link>
                 </Button>
               </div>
             </Card>
 
-            <Card className="group flex h-full flex-col justify-between rounded-[30px] border border-stone-200 p-7 shadow-[0_8px_26px_rgba(28,25,23,0.05)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-[#e5d3c7] hover:shadow-[0_16px_36px_rgba(28,25,23,0.09)] sm:p-9">
+            <Card className="group flex h-full flex-col justify-between rounded-[32px] border border-stone-200/60 bg-white p-8 shadow-[0_8px_30px_rgba(28,25,23,0.03)] transition-all duration-400 ease-out hover:-translate-y-1.5 hover:border-stone-300/80 hover:shadow-[0_20px_40px_rgba(28,25,23,0.08)] sm:p-10">
               <div className="flex flex-1 flex-col">
-                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F3E9E2] text-primary">
-                  <ArrowRightLeft className="size-6" />
+                <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-[20px] bg-stone-100 text-stone-600 transition-colors duration-400 group-hover:bg-primary/10 group-hover:text-primary">
+                  <ArrowRightLeft className="size-7" />
                 </div>
-                <SectionHeading
-                  eyebrow="Trade-in"
-                  title="Trade In Your Car"
-                  description="Share your current car details and our team will guide you on valuation, top-up options, and the next step toward your next vehicle."
-                />
+                <div>
+                  <h3 className="mb-3 text-2xl font-bold tracking-tight text-stone-950 sm:text-[1.75rem]">
+                    Trade In Your Car
+                  </h3>
+                  <p className="max-w-[85%] text-[0.95rem] leading-relaxed text-stone-500">
+                    Upgrade seamlessly. Get a fair valuation on your current vehicle to put towards your next purchase.
+                  </p>
+                </div>
               </div>
-              <div className="mt-8 pt-2">
-                <Button asChild>
+              <div className="mt-10 pt-2">
+                <Button asChild variant="outline" className="h-12 rounded-xl border-stone-200 px-6 text-[0.9rem] font-semibold text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900">
                   <Link href="/trade-in">Value Your Trade</Link>
                 </Button>
               </div>
