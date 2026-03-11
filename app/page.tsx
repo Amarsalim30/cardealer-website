@@ -1,10 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  ArrowRightLeft,
   Check,
   CircleGauge,
   Cog,
   Fuel,
+  Landmark,
   Phone,
   Star,
 } from "lucide-react";
@@ -133,38 +135,38 @@ function DeliveredVehicleCard({
   vehicle: DeliveredVehicleCardData;
 }) {
   return (
-    <Card className="overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-[0_12px_30px_rgba(28,25,23,0.06)]">
-      <div className="relative aspect-[16/11] overflow-hidden bg-stone-200">
+    <Card className="group overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-[0_4px_20px_rgba(28,25,23,0.04)] transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(28,25,23,0.08)]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-stone-200">
         {vehicle.imageUrl ? (
           <Image
             src={vehicle.imageUrl}
             alt={`${vehicle.year} ${vehicle.title}`}
             fill
             sizes="(min-width: 1280px) 194px, (min-width: 768px) 30vw, 100vw"
-            className="object-cover"
+            className="object-cover transition-transform duration-500 hover:scale-[1.03]"
           />
         ) : (
           <div className="flex h-full items-center justify-center bg-[linear-gradient(135deg,#f5f5f4,white)] px-6 text-center text-sm leading-7 text-stone-500">
             Photo coming soon
           </div>
         )}
-        <div className="absolute left-4 top-4 rounded-full bg-emerald-600/92 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_8px_20px_rgba(5,150,105,0.22)] backdrop-blur-sm">
+        <div className="absolute left-4 top-4 rounded-full bg-[#10b981]/95 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-white shadow-[0_8px_20px_rgba(16,185,129,0.22)] backdrop-blur-sm">
           Delivered
         </div>
       </div>
 
       <div className="space-y-3 p-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-          {vehicle.deliveryLabel}
-        </p>
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
-            {vehicle.year}
-          </p>
-          <h3 className="mt-2 text-xl font-semibold leading-tight text-stone-950">
+          <h3 className="text-lg font-bold leading-tight text-stone-950 sm:text-xl">
             {vehicle.title}
           </h3>
+          <p className="mt-1 text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
+            {vehicle.year}
+          </p>
         </div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#10b981] pt-1 border-t border-stone-100">
+          {vehicle.deliveryLabel}
+        </p>
       </div>
     </Card>
   );
@@ -587,27 +589,42 @@ export default async function Home() {
           </div>
         </section>
 
-        <section className="section-shell bg-white/50">
+        <section className="section-shell bg-stone-50/50">
           <div className="container-shell grid gap-6 lg:grid-cols-2">
-            <Card className="rounded-[30px] p-7 sm:p-8">
-              <SectionHeading
-                eyebrow="Financing"
-                title="Vehicle Financing Available"
-                description="Ask about deposit options, monthly payment plans, and the next steps before you commit to a vehicle."
-              />
-              <Button asChild className="mt-6">
-                <Link href="/financing">Ask About Financing</Link>
-              </Button>
+            <Card className="group flex flex-col justify-between rounded-[30px] p-7 sm:p-9 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(0,0,0,0.06)]">
+              <div>
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <Landmark className="size-6" />
+                </div>
+                <SectionHeading
+                  eyebrow="Financing"
+                  title="Vehicle Financing Available"
+                  description="Ask about deposit options, monthly payment plans, and the next steps before you commit to a vehicle."
+                />
+              </div>
+              <div className="mt-8">
+                <Button asChild>
+                  <Link href="/financing">Ask About Financing</Link>
+                </Button>
+              </div>
             </Card>
-            <Card className="rounded-[30px] p-7 sm:p-8">
-              <SectionHeading
-                eyebrow="Trade-in"
-                title="Trade In Your Car"
-                description="Share your current car details and our team will guide you on valuation, top-up options, and the next step toward your next vehicle."
-              />
-              <Button asChild className="mt-6">
-                <Link href="/trade-in">Value Your Trade</Link>
-              </Button>
+            
+            <Card className="group flex flex-col justify-between rounded-[30px] p-7 sm:p-9 shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_12px_36px_rgba(0,0,0,0.06)]">
+              <div>
+                <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <ArrowRightLeft className="size-6" />
+                </div>
+                <SectionHeading
+                  eyebrow="Trade-in"
+                  title="Trade In Your Car"
+                  description="Share your current car details and our team will guide you on valuation, top-up options, and the next step toward your next vehicle."
+                />
+              </div>
+              <div className="mt-8">
+                <Button asChild>
+                  <Link href="/trade-in">Value Your Trade</Link>
+                </Button>
+              </div>
             </Card>
           </div>
         </section>
@@ -616,8 +633,8 @@ export default async function Home() {
           <div className="container-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
             <SectionHeading
               eyebrow="Delivered units"
-              title="Sold and delivered stock keeps trust visible"
-              description="Social proof works better when it is grounded in real-looking inventory rather than generic claims."
+              title="Recently Delivered Cars in Mombasa"
+              description="Real cars delivered to real buyers in Mombasa."
             />
             <div className="grid gap-5 md:grid-cols-3">
               {deliveredShowcaseVehicles.map((vehicle) => (
