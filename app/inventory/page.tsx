@@ -41,20 +41,23 @@ export default async function InventoryPage({
       <section className="section-shell">
         <div className="container-shell space-y-10">
           <SectionHeading
-            eyebrow="Inventory"
-            title="Browse current stock and search by the filters buyers use most"
-            description="The inventory view stays server-rendered and mobile-friendly, with practical search options instead of heavy interface chrome."
+            eyebrow="Our Inventory"
+            title="Browse Available Vehicles"
+            description="Use the filters below to find exactly what you're looking for. All listed vehicles are physically available for inspection before purchase."
           />
           <InventoryFilterBar query={query} facets={result.facets} />
 
           <div className="grid gap-6 lg:grid-cols-3">
             {result.items.length ? (
               result.items.map((vehicle) => (
-                <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                <div key={vehicle.id} className="h-auto">
+                   <VehicleCard vehicle={vehicle} />
+                </div>
               ))
             ) : (
-              <div className="rounded-[28px] border border-dashed border-border bg-white/60 p-8 text-stone-600 lg:col-span-3">
-                No vehicles matched those filters. Clear a few fields and try again.
+              <div className="flex flex-col items-center justify-center rounded-[32px] border border-dashed border-stone-200 bg-white/60 p-12 text-center text-stone-500 lg:col-span-3">
+                <p className="text-lg font-medium text-stone-900">No vehicles match your search</p>
+                <p className="mt-2 text-sm">Clear a few filters or adjust your search terms and try again.</p>
               </div>
             )}
           </div>

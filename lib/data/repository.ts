@@ -2,6 +2,7 @@ import { listCloudinaryVehicleAssets } from "@/lib/cloudinary";
 import { sortByNewest } from "@/lib/utils";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { hasCloudinaryConfig } from "@/lib/env";
 import {
   applyInventoryFilters,
   buildFacets,
@@ -89,6 +90,35 @@ function getPublicReadClient() {
 function mapSupabaseVehicleRow(row: Record<string, unknown>): Vehicle {
   const locationRow = row.locations as Record<string, unknown> | null;
   const imageRows = (row.vehicle_images || []) as Array<Record<string, unknown>>;
+  const heroImageUrl = row.hero_image_url ? String(row.hero_image_url) : null;
+  const mappedImages = imageRows
+    .map((image) => ({
+      id: String(image.id),
+      vehicleId: String(image.vehicle_id),
+      imageUrl: String(image.image_url),
+      altText: image.alt_text ? String(image.alt_text) : null,
+      cloudinaryPublicId: image.cloudinary_public_id
+        ? String(image.cloudinary_public_id)
+        : null,
+      sortOrder: Number(image.sort_order),
+      isHero: Boolean(image.is_hero),
+      createdAt: String(image.created_at),
+    }))
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+  const fallbackImages = heroImageUrl
+    ? [
+        {
+          id: `${String(row.id)}-hero-image`,
+          vehicleId: String(row.id),
+          imageUrl: heroImageUrl,
+          altText: `${String(row.title)} hero image`,
+          cloudinaryPublicId: null,
+          sortOrder: 0,
+          isHero: true,
+          createdAt: String(row.updated_at || row.created_at),
+        },
+      ]
+    : [];
 
   return {
     id: String(row.id),
@@ -127,21 +157,8 @@ function mapSupabaseVehicleRow(row: Record<string, unknown>): Vehicle {
     status: row.status as Vehicle["status"],
     stockCategory: row.stock_category as Vehicle["stockCategory"],
     description: String(row.description),
-    heroImageUrl: row.hero_image_url ? String(row.hero_image_url) : null,
-    images: imageRows
-      .map((image) => ({
-        id: String(image.id),
-        vehicleId: String(image.vehicle_id),
-        imageUrl: String(image.image_url),
-        altText: image.alt_text ? String(image.alt_text) : null,
-        cloudinaryPublicId: image.cloudinary_public_id
-          ? String(image.cloudinary_public_id)
-          : null,
-        sortOrder: Number(image.sort_order),
-        isHero: Boolean(image.is_hero),
-        createdAt: String(image.created_at),
-      }))
-      .sort((left, right) => left.sortOrder - right.sortOrder),
+    heroImageUrl,
+    images: mappedImages.length ? mappedImages : fallbackImages,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -191,6 +208,21 @@ async function selectVehicleRowByStockCode(
   return data as Record<string, unknown> | null;
 }
 
+async function selectVehicleRowBySlug(client: SupabaseClient, slug: string) {
+  const { data, error } = await client
+    .from("vehicles")
+    .select("*, locations(*), vehicle_images(*)")
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as Record<string, unknown> | null;
+}
+
 function buildSyncedVehicleImages(vehicle: Vehicle, assets: Awaited<ReturnType<typeof listCloudinaryVehicleAssets>>["assets"]) {
   const timestamp = new Date().toISOString();
 
@@ -207,6 +239,35 @@ function buildSyncedVehicleImages(vehicle: Vehicle, assets: Awaited<ReturnType<t
     isHero: index === 0,
     createdAt: timestamp,
   })) satisfies Vehicle["images"];
+}
+
+async function hydrateVehicleGalleryFromCloudinary(vehicle: Vehicle) {
+  if (!hasCloudinaryConfig || !vehicle.stockCode || vehicle.images.length > 1) {
+    return vehicle;
+  }
+
+  try {
+    const { assets } = await listCloudinaryVehicleAssets(vehicle.stockCode);
+
+    if (!assets.length || assets.length <= vehicle.images.length) {
+      return vehicle;
+    }
+
+    const syncedImages = buildSyncedVehicleImages(vehicle, assets);
+
+    return {
+      ...vehicle,
+      heroImageUrl: syncedImages[0]?.imageUrl || vehicle.heroImageUrl,
+      images: syncedImages,
+    };
+  } catch (error) {
+    console.warn(
+      `[cloudinary] Unable to hydrate gallery for ${vehicle.stockCode}.`,
+      error instanceof Error ? error.message : error,
+    );
+
+    return vehicle;
+  }
 }
 
 export async function getLocations() {
@@ -318,12 +379,27 @@ export async function getInventoryFacets() {
 }
 
 export async function getVehicleBySlug(slug: string) {
+  const supabase = getPublicReadClient();
+
+  if (supabase) {
+    try {
+      const row = await selectVehicleRowBySlug(supabase, slug);
+
+      if (row) {
+        return hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row));
+      }
+    } catch (error) {
+      handleSupabaseReadFailure("[supabase] Failed to fetch vehicle by slug", error);
+    }
+  }
+
   const vehicles = await getAllVehicles();
-  return (
+  const vehicle =
     vehicles.find(
-      (vehicle) => vehicle.slug === slug && vehicle.status === "published",
-    ) || null
-  );
+      (item) => item.slug === slug && item.status === "published",
+    ) || null;
+
+  return vehicle ? hydrateVehicleGalleryFromCloudinary(vehicle) : null;
 }
 
 export async function getVehicleById(id: string) {
@@ -334,7 +410,7 @@ export async function getVehicleById(id: string) {
       const row = await selectVehicleRowById(serverClient, id);
 
       if (row) {
-        return mapSupabaseVehicleRow(row);
+        return hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row));
       }
     } catch (error) {
       handleSupabaseReadFailure("[supabase] Failed to fetch vehicle by id", error);
@@ -342,7 +418,8 @@ export async function getVehicleById(id: string) {
   }
 
   const vehicles = await getAllVehicles();
-  return vehicles.find((vehicle) => vehicle.id === id) || null;
+  const vehicle = vehicles.find((item) => item.id === id) || null;
+  return vehicle ? hydrateVehicleGalleryFromCloudinary(vehicle) : null;
 }
 
 export async function getSimilarVehicles(vehicle: Vehicle, limit = 3) {
@@ -455,7 +532,7 @@ export async function getVehicleByStockCode(stockCode: string) {
       const row = await selectVehicleRowByStockCode(serverClient, stockCode);
 
       if (row) {
-        return mapSupabaseVehicleRow(row);
+        return hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row));
       }
     } catch (error) {
       handleSupabaseReadFailure(
@@ -466,11 +543,12 @@ export async function getVehicleByStockCode(stockCode: string) {
   }
 
   const vehicles = await getAllVehicles();
-  return (
+  const vehicle =
     vehicles.find(
-      (vehicle) => vehicle.stockCode.toLowerCase() === stockCode.toLowerCase(),
-    ) || null
-  );
+      (item) => item.stockCode.toLowerCase() === stockCode.toLowerCase(),
+    ) || null;
+
+  return vehicle ? hydrateVehicleGalleryFromCloudinary(vehicle) : null;
 }
 
 export async function syncVehicleImagesFromCloudinary(

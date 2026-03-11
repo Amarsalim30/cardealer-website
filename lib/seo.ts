@@ -114,12 +114,18 @@ export function buildItemListJsonLd(vehicles: Vehicle[], listName: string) {
 }
 
 export function buildVehicleJsonLd(vehicle: Vehicle) {
+  const imageUrls = vehicle.images.length
+    ? vehicle.images.map((image) => image.imageUrl)
+    : vehicle.heroImageUrl
+      ? [vehicle.heroImageUrl]
+      : [];
+
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: vehicle.title,
     description: vehicle.description,
-    image: vehicle.images.map((image) => image.imageUrl),
+    image: imageUrls,
     brand: {
       "@type": "Brand",
       name: vehicle.make,

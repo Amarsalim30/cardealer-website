@@ -24,7 +24,35 @@ import {
   buildMetadata,
   buildVehicleJsonLd,
 } from "@/lib/seo";
-import { buildWhatsAppUrl, formatCurrency } from "@/lib/utils";
+import { buildWhatsAppUrl, formatCurrency, formatMileage } from "@/lib/utils";
+
+function buildQuickFacts(vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>) {
+  return [
+    `${vehicle.transmission} transmission`,
+    `${vehicle.fuelType} fuel`,
+    vehicle.bodyType ? `${vehicle.bodyType} body` : null,
+    vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : null,
+  ].filter((value): value is string => Boolean(value));
+}
+
+function buildBuyerSummary(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+  photoCount: number,
+) {
+  return [
+    vehicle.condition
+      ? `Condition listed as ${vehicle.condition}.`
+      : "Condition details available on request.",
+    photoCount
+      ? `Gallery includes ${photoCount} photo${photoCount === 1 ? "" : "s"} so buyers can review the car before they call.`
+      : "Fresh photos can be shared directly on WhatsApp while the gallery is being updated.",
+    `Available for viewing at ${vehicle.location?.name || "our Mombasa showroom"}.`,
+    vehicle.negotiable
+      ? "Price discussion is available after viewing and inspection."
+      : "Ask sales for current pricing, finance guidance, and the fastest next step.",
+    `Reference stock code ${vehicle.stockCode} when you call or message for faster assistance.`,
+  ];
+}
 
 export async function generateMetadata({
   params,
@@ -76,6 +104,9 @@ export default async function VehicleDetailPage({
     `Hi, is ${vehicle.title} still available?`,
     siteConfig.whatsappNumber,
   );
+  const photoCount = vehicle.images.length || (vehicle.heroImageUrl ? 1 : 0);
+  const quickFacts = buildQuickFacts(vehicle);
+  const buyerSummary = buildBuyerSummary(vehicle, photoCount);
 
   return (
     <>
@@ -84,7 +115,12 @@ export default async function VehicleDetailPage({
       <section className="section-shell pb-28">
         <div className="container-shell space-y-10">
           <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-            <VehicleGallery images={vehicle.images} title={vehicle.title} />
+            <VehicleGallery
+              key={vehicle.id}
+              images={vehicle.images}
+              heroImageUrl={vehicle.heroImageUrl}
+              title={vehicle.title}
+            />
 
             <div className="space-y-6">
               <div className="flex flex-wrap gap-2">
@@ -101,9 +137,24 @@ export default async function VehicleDetailPage({
                 <h1 className="display-font text-balance text-5xl leading-tight text-stone-950">
                   {vehicle.title}
                 </h1>
-                <div className="mt-5 flex items-center gap-2 text-sm text-stone-600">
-                  <MapPin className="size-4" />
-                  {vehicle.location?.name || "Mombasa showroom"}
+                <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-stone-600">
+                  <div className="inline-flex items-center gap-2">
+                    <MapPin className="size-4" />
+                    {vehicle.location?.name || "Mombasa showroom"}
+                  </div>
+                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                    Stock code {vehicle.stockCode}
+                  </span>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {quickFacts.map((fact) => (
+                    <span
+                      key={fact}
+                      className="rounded-full border border-stone-200 bg-white px-3.5 py-2 text-sm font-medium text-stone-700"
+                    >
+                      {fact}
+                    </span>
+                  ))}
                 </div>
               </div>
 
@@ -146,17 +197,14 @@ export default async function VehicleDetailPage({
               </Card>
 
               <div className="rounded-[28px] border border-border bg-white/70 p-6 text-sm leading-7 text-stone-600">
-                <p className="font-semibold text-stone-900">Trust highlights</p>
+                <p className="font-semibold text-stone-900">Buyer summary</p>
                 <ul className="mt-4 space-y-2">
-                  <li>
-                    Clean summary of condition, key specs, and showroom location.
-                  </li>
-                  <li>
-                    Fast phone and WhatsApp contact without forcing long forms.
-                  </li>
-                  <li>
-                    Support for finance discussions, trade-ins, and viewing scheduling.
-                  </li>
+                  {buyerSummary.map((item) => (
+                    <li key={item} className="flex items-start gap-3">
+                      <span className="mt-2 inline-flex size-2 shrink-0 rounded-full bg-primary/70" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -177,9 +225,14 @@ export default async function VehicleDetailPage({
                 <h2 className="text-2xl font-semibold text-stone-950">
                   Vehicle overview
                 </h2>
-                <p className="mt-5 text-sm leading-8 text-stone-600">
-                  {vehicle.description}
-                </p>
+                <div className="mt-5 space-y-4 text-sm leading-8 text-stone-600">
+                  <p>{vehicle.description}</p>
+                  <p>
+                    Use the action buttons on this page to confirm live
+                    availability, ask for a walk-around video, or book a viewing
+                    slot before you travel.
+                  </p>
+                </div>
               </Card>
 
               {similarVehicles.length ? (
