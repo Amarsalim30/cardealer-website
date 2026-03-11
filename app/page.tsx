@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
+  Check,
   CircleGauge,
   Cog,
   Fuel,
@@ -219,16 +220,16 @@ export default async function Home() {
               fill
               priority
               quality={90}
-              className="object-cover object-[75%_center] opacity-85 transition-transform duration-[30s] ease-out hover:scale-[1.05]"
+              className="object-cover object-[60%_62%] opacity-95 brightness-[1.12] contrast-[1.02] transition-transform duration-[30s] ease-out hover:scale-[1.05]"
               sizes="100vw"
             />
             {/* Cinematic Gradient Overlays for Depth */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black z-10" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.5)_100%)] z-10" />
+            <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/50 via-black/10 to-black/72" />
+            <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_30%_76%,rgba(255,255,255,0.22)_0%,transparent_30%),radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)]" />
           </div>
 
           <div className="container relative z-20 mx-auto flex w-full flex-col items-center justify-center px-4 text-center sm:px-6 lg:px-8 xl:max-w-7xl">
-            <div className="max-w-5xl space-y-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-10 duration-1000 sm:space-y-6">              {/* Conversion-optimized Headline */}
+            <div className="max-w-5xl space-y-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-10 duration-1000 sm:space-y-6">
               <h1 className="text-5xl font-extrabold tracking-tighter text-white sm:text-6xl md:text-7xl lg:text-8xl leading-[1.05]">
                 Premium Imported <br className="hidden sm:block" />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-stone-200 via-white to-stone-500">
@@ -237,7 +238,7 @@ export default async function Home() {
               </h1>
 
               {/* Subheadline */}
-              <p className="mx-auto max-w-2xl text-lg font-light leading-relaxed text-stone-300 sm:text-xl md:text-2xl">
+              <p className="mx-auto max-w-[640px] text-lg font-light leading-relaxed text-stone-300 sm:text-xl md:text-2xl">
                 Discover a curated collection of premium SUVs and sedans. Transparent pricing, flexible financing, and a flawless journey from showroom to driveway.
               </p>
 
@@ -246,9 +247,13 @@ export default async function Home() {
                 <Button
                   asChild
                   size="lg"
-                  className="group relative h-14 overflow-hidden rounded-full bg-white px-8 text-base font-semibold text-black transition-all hover:bg-stone-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(255,255,255,0.2)] duration-300"
+                  className="group relative h-14 overflow-hidden rounded-full border border-primary/80 bg-primary px-8 text-base font-semibold text-white shadow-[0_14px_30px_rgba(165,90,42,0.34)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#8c4922] hover:shadow-[0_18px_36px_rgba(140,73,34,0.34)]"
                 >
-                  <Link href="/inventory" className="flex items-center gap-2">
+                  <Link
+                    href="/inventory"
+                    className="flex items-center gap-2 text-white"
+                    style={{ color: "#ffffff" }}
+                  >
                     Explore Collection
                     <svg className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -260,7 +265,13 @@ export default async function Home() {
                   size="lg"
                   className="group h-14 rounded-full border border-white/20 bg-black/40 px-8 text-base font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 hover:-translate-y-0.5 hover:border-white/40 hover:shadow-[0_8px_20px_rgba(255,255,255,0.05)] duration-300"
                 >
-                  <a href={homepageWhatsAppUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2">
+                  <a
+                    href={homepageWhatsAppUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-white"
+                    style={{ color: "#ffffff" }}
+                  >
                     <WhatsAppIcon className="size-5 text-[#25d366] transition-transform group-hover:scale-110 duration-300" />
                     Contact Sales
                   </a>
@@ -268,10 +279,24 @@ export default async function Home() {
               </div>
 
               {/* Trust Strip */}
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-white/80 lowercase tracking-wider sm:gap-6">
+              <div className="hidden mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-white/80 lowercase tracking-wider sm:gap-6">
                 <span className="flex items-center gap-1.5"><span className="text-[#25d366]">✔</span> Trusted Mombasa Dealer</span>
                 <span className="flex items-center gap-1.5"><span className="text-[#25d366]">✔</span> Fully Inspected Vehicles</span>
                 <span className="flex items-center gap-1.5"><span className="text-[#25d366]">✔</span> Fast WhatsApp Response</span>
+              </div>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-white/80 lowercase tracking-wider sm:gap-6">
+                <span className="flex items-center gap-1.5">
+                  <Check className="size-3.5 text-[#25d366]" />
+                  Trusted Mombasa Dealer
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Check className="size-3.5 text-[#25d366]" />
+                  Fully Inspected Vehicles
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Check className="size-3.5 text-[#25d366]" />
+                  Fast WhatsApp Response
+                </span>
               </div>
             </div>
 
@@ -354,23 +379,23 @@ export default async function Home() {
 
         {/* Feature Highlights Row */}
         <section className="border-b border-stone-200 bg-white">
-          <div className="container mx-auto xl:max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-            <div className="grid w-full grid-cols-2 md:grid-cols-4 gap-6 text-sm font-medium text-stone-600">
-              <div className="flex flex-col items-center justify-center gap-3 p-4">
+          <div className="container mx-auto px-4 py-12 sm:px-6 sm:py-12 lg:px-8 xl:max-w-7xl">
+            <div className="grid w-full grid-cols-2 gap-6 text-sm font-medium text-stone-600 md:grid-cols-4">
+              <div className="flex flex-col items-center justify-center gap-3 p-5">
                 <CircleGauge className="size-6 text-primary" />
                 <span className="text-center font-semibold text-stone-900">Low-Mileage Imports</span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-3 p-4">
+              <div className="flex flex-col items-center justify-center gap-3 p-5">
                 <Cog className="size-6 text-primary" />
                 <span className="text-center font-semibold text-stone-900">Fully Inspected</span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-3 p-4">
+              <div className="flex flex-col items-center justify-center gap-3 p-5">
                 <svg className="size-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
                 <span className="text-center font-semibold text-stone-900">Warranty Included</span>
               </div>
-              <div className="flex flex-col items-center justify-center gap-3 p-4">
+              <div className="flex flex-col items-center justify-center gap-3 p-5">
                 <Fuel className="size-6 text-primary" />
                 <span className="text-center font-semibold text-stone-900">Flexible Financing</span>
               </div>
@@ -386,10 +411,10 @@ export default async function Home() {
                   eyebrow="Inventory"
                   title={
                     collections.featured.length
-                      ? "Compare Cars With Clear Prices and Specs"
-                      : "Latest Cars With Clear Prices and Specs"
+                      ? "Featured Cars Ready for Viewing"
+                      : "Browse Available Vehicles"
                   }
-                  description="Use price, mileage, transmission, fuel type, and condition to shortlist quickly, then open the full details only when a car makes rational sense."
+                  description="See price, mileage, transmission, fuel type, and condition at a glance before you open the full details or start a WhatsApp conversation."
                 />
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-primary">

@@ -34,7 +34,7 @@ export function FloatingWhatsAppButton({
       target="_blank"
       rel="noreferrer"
       aria-label={label}
-      className={`fixed bottom-6 right-6 z-50 inline-flex h-14 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-semibold text-white shadow-[0_16px_35px_rgba(20,75,44,0.35)] transition-all duration-300 hover:scale-[1.02] hover:bg-[#1fb85a] ${
+      className={`fixed bottom-5 right-5 z-50 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(20,75,44,0.24)] transition-all duration-300 hover:scale-[1.02] hover:bg-[#1fb85a] sm:bottom-6 sm:right-6 sm:h-12 sm:px-5 ${
         isVisible
           ? "translate-y-0 opacity-100"
           : "pointer-events-none translate-y-4 opacity-0"
