@@ -105,7 +105,7 @@ export function VehicleGallery({
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-[32px] border border-border bg-white">
+      <div className="relative overflow-hidden rounded-[36px] border border-stone-200/50 bg-white shadow-[0_8px_30px_rgba(28,25,23,0.03)] selection:bg-transparent">
         <div className="relative aspect-[4/3] overflow-hidden">
           <Image
             src={primaryImage}
@@ -160,10 +160,10 @@ export function VehicleGallery({
               key={image.id}
               type="button"
               className={cn(
-                "relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-2xl border bg-white transition-all",
+                "relative aspect-[4/3] w-32 shrink-0 overflow-hidden rounded-[20px] border shadow-sm transition-all",
                 activeImage?.id === image.id
                   ? "border-primary ring-2 ring-primary/20"
-                  : "border-border hover:border-stone-300",
+                  : "border-stone-200 hover:border-stone-300 hover:shadow-md",
               )}
               aria-label={`Show photo ${index + 1} of ${galleryImages.length}`}
               aria-pressed={activeImage?.id === image.id}

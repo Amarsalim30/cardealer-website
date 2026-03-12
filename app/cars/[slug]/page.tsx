@@ -217,67 +217,72 @@ export default async function VehicleDetailPage({
               </div>
 
               <div>
-                <h1 className="display-font text-balance text-5xl leading-tight text-stone-950">
+                <h1 className="display-font text-balance text-[2.75rem] font-bold leading-[1.1] tracking-tight text-stone-900 lg:text-5xl">
                   {vehicle.title}
                 </h1>
-                <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-stone-600">
-                  <div className="inline-flex items-center gap-2">
-                    <MapPin className="size-4" />
+                <div className="mt-5 flex flex-wrap items-center gap-4 text-[0.85rem] font-medium text-stone-500">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5">
+                    <MapPin className="size-[1.1rem] text-stone-400" />
                     {vehicle.location?.name || "Mombasa showroom"}
                   </div>
-                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                  <span className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.2em] text-stone-400">
                     Ref {vehicle.stockCode}
                   </span>
                 </div>
               </div>
 
-              <Card className="rounded-[28px] border-stone-200 bg-[linear-gradient(180deg,#fffaf5_0%,#ffffff_100%)] p-6 shadow-[0_18px_40px_rgba(41,26,7,0.08)] lg:p-7">
-                <p className="text-sm font-medium text-stone-500">
-                  Price
+              <Card className="rounded-[32px] border-stone-200/60 bg-white p-7 shadow-[0_8px_30px_rgba(28,25,23,0.03)] lg:p-9 xl:p-10">
+                <p className="text-[0.75rem] font-bold uppercase tracking-[0.2em] text-stone-400">
+                  Total Price
                 </p>
-                <p className="mt-3 text-[clamp(2.9rem,6vw,5.25rem)] font-black leading-none tracking-[-0.04em] text-stone-950">
+                <p className="mt-2 text-[3rem] font-black leading-none tracking-tight text-primary lg:text-[3.5rem] xl:text-[4rem]">
                   {formatCurrency(vehicle.price)}
                 </p>
-                <div className="mt-5 flex flex-wrap gap-2">
+                <div className="mt-6 flex flex-wrap gap-2.5">
                   {quickFacts.map((fact) => (
                     <span
                       key={fact}
-                      className="rounded-full border border-stone-200 bg-white px-3.5 py-2 text-sm font-medium text-stone-700"
+                      className="rounded-xl bg-stone-50 px-3.5 py-2 text-[0.8rem] font-medium text-stone-600 border border-stone-100"
                     >
                       {fact}
                     </span>
                   ))}
                 </div>
-                <p className="mt-3 text-sm text-stone-600">
+                <p className="mt-5 text-[0.85rem] leading-relaxed text-stone-500">
                   The fastest path is WhatsApp. Use the secondary actions only if
                   you already know the next step you want.
                 </p>
-                <div className="mt-5 grid gap-3">
+                <div className="mt-7 grid gap-3.5">
                   <Button
                     asChild
                     size="lg"
-                    className="w-full shadow-[0_18px_40px_rgba(185,106,43,0.28)]"
+                    className="h-14 w-full rounded-2xl bg-[#25d366] text-base font-bold text-white shadow-[0_8px_24px_rgba(37,211,102,0.25)] transition-all hover:-translate-y-0.5 hover:bg-[#1ebd5a] hover:shadow-[0_12px_30px_rgba(37,211,102,0.35)]"
                   >
                     <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <WhatsAppIcon className="size-4" />
+                      <WhatsAppIcon className="mr-2 size-[1.15rem]" />
                       WhatsApp This Car
                     </a>
                   </Button>
-                  <Button asChild variant="secondary" className="w-full">
+                  <Button
+                    asChild
+                    variant="secondary"
+                    className="h-14 w-full rounded-2xl border-stone-200 bg-white text-base font-semibold !text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:!text-stone-950"
+                  >
                     <Link href={`${baseVehiclePath}?intent=viewing#contact-panel`}>
                       Book a Visit / Test Drive
                     </Link>
                   </Button>
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-sm font-semibold text-stone-600">
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-2 text-[0.85rem] font-bold text-stone-500">
                     <Link
                       href={`${baseVehiclePath}?intent=financing#contact-panel`}
-                      className="transition-colors hover:text-stone-950 hover:underline"
+                      className="transition-colors hover:text-primary"
                     >
                       See Payment Options
                     </Link>
+                    <span className="hidden h-1 w-1 rounded-full bg-stone-300 md:block" />
                     <Link
                       href={`/trade-in?vehicle=${vehicle.slug}`}
-                      className="transition-colors hover:text-stone-950 hover:underline"
+                      className="transition-colors hover:text-primary"
                     >
                       Value Your Trade
                     </Link>
@@ -301,13 +306,13 @@ export default async function VehicleDetailPage({
           </div>
 
           <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-            <Card className="rounded-[28px] p-6 lg:p-7">
+            <Card className="rounded-[32px] border-stone-200/60 bg-white p-7 shadow-[0_8px_30px_rgba(28,25,23,0.03)] lg:p-10">
               <div className="grid gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:gap-10">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
                     Buyer guide
                   </p>
-                  <h2 className="mt-3 text-2xl font-semibold text-stone-950">
+                  <h2 className="mt-3 text-[1.75rem] font-bold tracking-tight text-stone-950">
                     Highlights buyers ask for
                   </h2>
                   <div className="mt-5">
@@ -316,7 +321,7 @@ export default async function VehicleDetailPage({
                 </div>
 
                 <div className="min-w-0 border-t border-stone-200 pt-7 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
-                  <h2 className="mt-3 text-2xl font-semibold text-stone-950">
+                  <h2 className="mt-3 text-[1.75rem] font-bold tracking-tight text-stone-950">
                     Why this one stands out
                   </h2>
                   <ul className="mt-5 space-y-2.5 text-sm leading-7 text-stone-600">
