@@ -58,6 +58,21 @@ function buildBuyerSummary(
   ];
 }
 
+function buildOverviewHighlights(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+) {
+  return [
+    vehicle.mileage > 0
+      ? `Mileage currently listed at ${formatMileage(vehicle.mileage)}.`
+      : null,
+    vehicle.engineCapacity
+      ? `${vehicle.engineCapacity} engine paired with ${vehicle.transmission.toLowerCase()} transmission.`
+      : `${vehicle.transmission} transmission with ${vehicle.fuelType.toLowerCase()} power.`,
+    vehicle.condition ? `${vehicle.condition} condition noted on the listing.` : null,
+    `Available for viewing at ${vehicle.location?.name || "our Mombasa showroom"}.`,
+  ].filter((value): value is string => Boolean(value));
+}
+
 function buildDetailBadges(
   vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
 ) {
@@ -74,18 +89,31 @@ function buildDetailBadges(
 
   return [
     vehicle.featured
-      ? { label: "Featured", variant: "muted" as const }
+      ? {
+          label: "Featured",
+          variant: "default" as const,
+          className: "bg-primary text-white shadow-[0_10px_24px_rgba(165,90,42,0.18)]",
+        }
       : null,
     vehicle.negotiable
-      ? { label: "Negotiable", variant: "accent" as const }
+      ? {
+          label: "Negotiable",
+          variant: "muted" as const,
+          className: "border border-stone-200 bg-white text-stone-700",
+        }
       : null,
-    { label: stockLabel, variant: "default" as const },
+    {
+      label: stockLabel,
+      variant: "muted" as const,
+      className: "bg-stone-200 text-stone-700",
+    },
   ].filter(
     (
       value,
     ): value is {
       label: string;
-      variant: "default" | "accent" | "muted";
+      variant: "default" | "muted";
+      className: string;
     } => Boolean(value),
   );
 }
@@ -144,6 +172,7 @@ export default async function VehicleDetailPage({
   const quickFacts = buildQuickFacts(vehicle);
   const buyerSummary = buildBuyerSummary(vehicle, photoCount);
   const buyerHighlights = buyerSummary.slice(0, 4);
+  const overviewHighlights = buildOverviewHighlights(vehicle);
   const detailBadges = buildDetailBadges(vehicle);
   const baseVehiclePath = `/cars/${vehicle.slug}`;
 
@@ -151,9 +180,9 @@ export default async function VehicleDetailPage({
     <>
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={vehicleJsonLd} />
-      <section className="section-shell pb-28">
-        <div className="container-shell space-y-10">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <section className="section-shell pb-24">
+        <div className="container-shell space-y-8">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <div className="min-w-0">
               <VehicleGallery
                 key={vehicle.id}
@@ -163,10 +192,14 @@ export default async function VehicleDetailPage({
               />
             </div>
 
-            <div className="min-w-0 space-y-6 lg:sticky lg:top-28 lg:self-start">
+            <div className="min-w-0 space-y-5 lg:sticky lg:top-28 lg:self-start">
               <div className="flex flex-wrap gap-2">
                 {detailBadges.map((badge) => (
-                  <Badge key={badge.label} variant={badge.variant}>
+                  <Badge
+                    key={badge.label}
+                    variant={badge.variant}
+                    className={badge.className}
+                  >
                     {badge.label}
                   </Badge>
                 ))}
@@ -185,6 +218,15 @@ export default async function VehicleDetailPage({
                     Stock code {vehicle.stockCode}
                   </span>
                 </div>
+              </div>
+
+              <Card className="rounded-[28px] border-stone-200 bg-[linear-gradient(180deg,#fffaf5_0%,#ffffff_100%)] p-6 shadow-[0_18px_40px_rgba(41,26,7,0.08)] lg:p-7">
+                <p className="text-sm font-medium text-stone-500">
+                  Price
+                </p>
+                <p className="mt-3 text-[clamp(2.9rem,6vw,5.25rem)] font-black leading-none tracking-[-0.04em] text-stone-950">
+                  {formatCurrency(vehicle.price)}
+                </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   {quickFacts.map((fact) => (
                     <span
@@ -195,20 +237,11 @@ export default async function VehicleDetailPage({
                     </span>
                   ))}
                 </div>
-              </div>
-
-              <Card className="rounded-[28px] border-stone-200 bg-[linear-gradient(180deg,#fffaf5_0%,#ffffff_100%)] p-7 shadow-[0_18px_40px_rgba(41,26,7,0.08)]">
-                <p className="text-xs uppercase tracking-[0.24em] text-stone-500">
-                  Today&apos;s price
-                </p>
-                <p className="mt-3 text-[clamp(2.9rem,6vw,5.25rem)] font-black leading-none tracking-[-0.04em] text-stone-950">
-                  {formatCurrency(vehicle.price)}
-                </p>
                 <p className="mt-3 text-sm text-stone-600">
                   The fastest path is WhatsApp. Use the secondary actions only if
                   you already know the next step you want.
                 </p>
-                <div className="mt-6 grid gap-3">
+                <div className="mt-5 grid gap-3">
                   <Button
                     asChild
                     size="lg"
@@ -219,29 +252,31 @@ export default async function VehicleDetailPage({
                       WhatsApp This Car
                     </a>
                   </Button>
-                  <Button asChild variant="dark" className="w-full">
+                  <Button asChild variant="secondary" className="w-full">
                     <Link href={`${baseVehiclePath}?intent=viewing#contact-panel`}>
                       Book Test Drive / Viewing
                     </Link>
                   </Button>
-                  <Button asChild variant="secondary" className="w-full">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1 text-sm font-semibold text-stone-600">
                     <Link
                       href={`${baseVehiclePath}?intent=financing#contact-panel`}
+                      className="transition-colors hover:text-stone-950 hover:underline"
                     >
                       Ask About Financing
                     </Link>
-                  </Button>
-                  <Button asChild variant="secondary" className="w-full">
-                    <Link href={`/trade-in?vehicle=${vehicle.slug}`}>
+                    <Link
+                      href={`/trade-in?vehicle=${vehicle.slug}`}
+                      className="transition-colors hover:text-stone-950 hover:underline"
+                    >
                       Value Your Trade
                     </Link>
-                  </Button>
+                  </div>
                 </div>
-                <div className="mt-6 border-t border-stone-200/80 pt-6">
+                <div className="mt-5 border-t border-stone-200/80 pt-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
                     Before you enquire
                   </p>
-                  <ul className="mt-3 space-y-2.5 text-sm leading-7 text-stone-600">
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-stone-600">
                     {buyerHighlights.map((item) => (
                       <li key={item} className="flex items-start gap-3">
                         <span className="mt-2 inline-flex size-2 shrink-0 rounded-full bg-primary/70" />
@@ -254,9 +289,9 @@ export default async function VehicleDetailPage({
             </div>
           </div>
 
-          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-            <Card className="rounded-[28px] p-8 lg:p-10">
-              <div className="grid gap-10 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:gap-12">
+          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+            <Card className="rounded-[28px] p-6 lg:p-7">
+              <div className="grid gap-8 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:gap-10">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
                     Vehicle details
@@ -264,30 +299,27 @@ export default async function VehicleDetailPage({
                   <h2 className="mt-3 text-2xl font-semibold text-stone-950">
                     Core specifications
                   </h2>
-                  <div className="mt-6">
+                  <div className="mt-5">
                     <SpecGrid vehicle={vehicle} />
                   </div>
                 </div>
 
-                <div className="min-w-0 border-t border-stone-200 pt-8 xl:border-l xl:border-t-0 xl:pl-10 xl:pt-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-                    Overview
-                  </p>
+                <div className="min-w-0 border-t border-stone-200 pt-7 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
                   <h2 className="mt-3 text-2xl font-semibold text-stone-950">
                     What to expect
                   </h2>
-                  <div className="mt-6 space-y-4 text-sm leading-8 text-stone-600">
-                    <p>{vehicle.description}</p>
-                    <p>
-                      Use the action buttons on this page to confirm live
-                      availability, ask for a walk-around video, or book a viewing
-                      slot before you travel.
-                    </p>
-                    <p className="pt-2 font-medium text-stone-700">
-                      Reference stock code {vehicle.stockCode} when you call or
-                      message so the team can move faster.
-                    </p>
-                  </div>
+                  <ul className="mt-5 space-y-2.5 text-sm leading-7 text-stone-600">
+                    {overviewHighlights.map((item) => (
+                      <li key={item} className="flex items-start gap-3">
+                        <span className="mt-3 inline-flex size-2 shrink-0 rounded-full bg-stone-300" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="pt-3 text-sm font-medium text-stone-700">
+                    Reference stock code {vehicle.stockCode} when you call or
+                    message so the team can move faster.
+                  </p>
                 </div>
               </div>
             </Card>
@@ -307,19 +339,10 @@ export default async function VehicleDetailPage({
           </div>
 
           {similarVehicles.length ? (
-            <div className="space-y-6">
-              <div className="max-w-[42rem] space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-                  More options
-                </p>
-                <h2 className="text-2xl font-semibold text-stone-950">
-                  Similar vehicles
-                </h2>
-                <p className="text-sm leading-7 text-stone-600">
-                  Keep browsing comparable stock if this unit is close, but not
-                  quite the exact fit.
-                </p>
-              </div>
+            <div className="space-y-5">
+              <h2 className="text-2xl font-semibold text-stone-950">
+                Similar vehicles
+              </h2>
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {similarVehicles.map((item) => (
                   <VehicleCard key={item.id} vehicle={item} />

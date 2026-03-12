@@ -13,7 +13,7 @@ export function SpecGrid({ vehicle }: { vehicle: Vehicle }) {
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-5 sm:grid-cols-2">
       {specs.map((spec) => (
         <div
           key={spec.label}

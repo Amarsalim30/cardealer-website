@@ -38,7 +38,7 @@ const intentMeta: Record<
     label: "Ask About Price",
     title: "Ask about price or availability",
     description:
-      "Use one short form for pricing, availability, or a walk-around video request.",
+      "Use one short form for price, availability, or a walk-around video.",
     submitLabel: "Send Enquiry",
     messageLabel: "What do you need?",
     messagePlaceholder:
@@ -49,17 +49,17 @@ const intentMeta: Record<
     label: "Book Viewing",
     title: "Book a viewing or test drive",
     description:
-      "Share the preferred day and time and the sales team will confirm the slot quickly.",
+      "Share the preferred day and time and sales will confirm the slot quickly.",
     submitLabel: "Book Viewing",
     messageLabel: "Timing notes",
     messagePlaceholder:
-      "Any timing, location, or inspection notes before you visit?",
+      "Tell us your preferred day, time, and any viewing notes before you visit.",
   },
   financing: {
     label: "Financing Info",
     title: "Ask about financing",
     description:
-      "Get repayment guidance, deposit expectations, and the next step for this vehicle.",
+      "Ask about deposit, repayment options, and the next step for this vehicle.",
     submitLabel: "Request Financing Info",
     messageLabel: "Financing question",
     messagePlaceholder:
@@ -110,22 +110,21 @@ export function VehicleEnquiryForm({
   const fieldPrefix = `vehicle-enquiry-${intent}`;
 
   return (
-    <Card className="rounded-[28px] p-6 lg:p-7">
-      <div className="mb-6">
+    <Card className="rounded-[28px] p-5 lg:p-6">
+      <div className="mb-5">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
           Quick enquiry
         </p>
         <h3 className="mt-3 text-2xl font-semibold text-stone-950">
-          Tell sales what you need
+          Ask about this vehicle
         </h3>
-        <p className="mt-2 max-w-[42ch] text-sm leading-6 text-stone-600">
-          Choose one path below instead of filling separate forms for the same
-          vehicle.
+        <p className="mt-2 max-w-[38ch] text-sm leading-6 text-stone-600">
+          Call, WhatsApp, or send one short message and the team will follow up.
         </p>
       </div>
 
       {phoneHref || whatsappUrl ? (
-        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+        <div className="mb-5 grid gap-2.5 sm:grid-cols-2">
           {phoneHref && phoneDisplay ? (
             <Button asChild variant="secondary" className="w-full">
               <a href={phoneHref}>
@@ -145,30 +144,32 @@ export function VehicleEnquiryForm({
         </div>
       ) : null}
 
-      <div className="grid gap-2 sm:grid-cols-3">
-        {(Object.entries(intentMeta) as Array<[VehicleIntent, (typeof intentMeta)[VehicleIntent]]>).map(
-          ([key, item]) => (
+      <div className="rounded-[22px] border border-stone-200 bg-stone-100/85 p-1">
+        <div className="grid gap-1.5 sm:grid-cols-3">
+          {(Object.entries(intentMeta) as Array<
+            [VehicleIntent, (typeof intentMeta)[VehicleIntent]]
+          >).map(([key, item]) => (
             <button
               key={key}
               type="button"
               onClick={() => setIntent(key)}
               aria-pressed={intent === key}
               className={cn(
-                "rounded-2xl border px-4 py-3 text-left transition-all",
+                "rounded-[18px] border px-3.5 py-2.5 text-left transition-all",
                 intent === key
-                  ? "border-primary bg-[#f7ece4] shadow-[0_8px_24px_rgba(185,106,43,0.12)]"
-                  : "border-stone-200 bg-white hover:border-stone-300",
+                  ? "border-primary bg-white text-stone-950 shadow-[0_10px_22px_rgba(185,106,43,0.14)] ring-1 ring-primary/15"
+                  : "border-transparent bg-transparent text-stone-600 hover:bg-white/75 hover:text-stone-900",
               )}
             >
-              <span className="block text-sm font-semibold text-stone-900">
+              <span className="block text-sm font-semibold">
                 {item.label}
               </span>
             </button>
-          ),
-        )}
+          ))}
+        </div>
       </div>
 
-      <div className="mt-6 border-t border-stone-200 pt-6">
+      <div className="mt-5 border-t border-stone-200 pt-5">
         <h4 className="text-lg font-semibold text-stone-950">
           {activeIntent.title}
         </h4>
@@ -177,7 +178,7 @@ export function VehicleEnquiryForm({
         </p>
 
         {intent === "viewing" ? (
-          <form action={testDriveAction} className="mt-6 space-y-4">
+          <form action={testDriveAction} className="mt-5 space-y-3">
             <input type="hidden" name="vehicleId" value={vehicleId || ""} />
             <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
             <input
@@ -185,6 +186,21 @@ export function VehicleEnquiryForm({
               name="source"
               value={`${source} - viewing`}
             />
+
+            <div>
+              <Label htmlFor={`${fieldPrefix}-phone`}>Phone</Label>
+              <Input
+                id={`${fieldPrefix}-phone`}
+                name="phone"
+                placeholder="+254..."
+                className="border-primary/35 bg-[#fffaf5]"
+              />
+              {state.fieldErrors?.phone ? (
+                <p className="mt-2 text-sm text-red-600">
+                  {state.fieldErrors.phone[0]}
+                </p>
+              ) : null}
+            </div>
 
             <div>
               <Label htmlFor={`${fieldPrefix}-name`}>Full name</Label>
@@ -201,54 +217,6 @@ export function VehicleEnquiryForm({
             </div>
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-phone`}>Phone</Label>
-              <Input
-                id={`${fieldPrefix}-phone`}
-                name="phone"
-                placeholder="+254..."
-              />
-              {state.fieldErrors?.phone ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.phone[0]}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <Label htmlFor={`${fieldPrefix}-email`}>Email</Label>
-              <Input
-                id={`${fieldPrefix}-email`}
-                name="email"
-                type="email"
-                placeholder="Optional email address"
-              />
-              {state.fieldErrors?.email ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.email[0]}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label htmlFor={`${fieldPrefix}-date`}>Preferred date</Label>
-                <Input
-                  id={`${fieldPrefix}-date`}
-                  name="preferredDate"
-                  type="date"
-                />
-              </div>
-              <div>
-                <Label htmlFor={`${fieldPrefix}-time`}>Preferred time</Label>
-                <Input
-                  id={`${fieldPrefix}-time`}
-                  name="preferredTime"
-                  placeholder="11:00 AM"
-                />
-              </div>
-            </div>
-
-            <div>
               <Label htmlFor={`${fieldPrefix}-message`}>
                 {activeIntent.messageLabel}
               </Label>
@@ -256,6 +224,7 @@ export function VehicleEnquiryForm({
                 id={`${fieldPrefix}-message`}
                 name="message"
                 placeholder={activeIntent.messagePlaceholder}
+                className="min-h-24"
               />
             </div>
 
@@ -275,7 +244,7 @@ export function VehicleEnquiryForm({
             </SubmitButton>
           </form>
         ) : (
-          <form action={leadAction} className="mt-6 space-y-4">
+          <form action={leadAction} className="mt-5 space-y-3">
             <input type="hidden" name="vehicleId" value={vehicleId || ""} />
             <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
             <input type="hidden" name="leadType" value={activeIntent.leadType} />
@@ -284,6 +253,21 @@ export function VehicleEnquiryForm({
               name="source"
               value={`${source} - ${intent}`}
             />
+
+            <div>
+              <Label htmlFor={`${fieldPrefix}-phone`}>Phone</Label>
+              <Input
+                id={`${fieldPrefix}-phone`}
+                name="phone"
+                placeholder="+254..."
+                className="border-primary/35 bg-[#fffaf5]"
+              />
+              {state.fieldErrors?.phone ? (
+                <p className="mt-2 text-sm text-red-600">
+                  {state.fieldErrors.phone[0]}
+                </p>
+              ) : null}
+            </div>
 
             <div>
               <Label htmlFor={`${fieldPrefix}-name`}>Full name</Label>
@@ -300,35 +284,6 @@ export function VehicleEnquiryForm({
             </div>
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-phone`}>Phone</Label>
-              <Input
-                id={`${fieldPrefix}-phone`}
-                name="phone"
-                placeholder="+254..."
-              />
-              {state.fieldErrors?.phone ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.phone[0]}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <Label htmlFor={`${fieldPrefix}-email`}>Email</Label>
-              <Input
-                id={`${fieldPrefix}-email`}
-                name="email"
-                type="email"
-                placeholder="Optional email address"
-              />
-              {state.fieldErrors?.email ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.email[0]}
-                </p>
-              ) : null}
-            </div>
-
-            <div>
               <Label htmlFor={`${fieldPrefix}-message`}>
                 {activeIntent.messageLabel}
               </Label>
@@ -336,6 +291,7 @@ export function VehicleEnquiryForm({
                 id={`${fieldPrefix}-message`}
                 name="message"
                 placeholder={activeIntent.messagePlaceholder}
+                className="min-h-24"
               />
             </div>
 

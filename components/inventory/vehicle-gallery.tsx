@@ -117,14 +117,14 @@ export function VehicleGallery({
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
           <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3">
-            <div className="rounded-full bg-stone-950/78 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white backdrop-blur-sm">
+            <div className="rounded-full bg-stone-950/70 px-3.5 py-1.5 text-xs font-semibold tracking-[0.08em] text-white backdrop-blur-sm">
               {activeIndex + 1} / {galleryImages.length} photos
             </div>
             {galleryImages.length > 1 ? (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="inline-flex size-10 items-center justify-center rounded-full bg-white/92 text-stone-900 shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition-colors hover:bg-white"
+                  className="inline-flex size-10 items-center justify-center rounded-full border border-white/20 bg-stone-950/38 text-white shadow-[0_10px_24px_rgba(15,23,42,0.14)] backdrop-blur-md transition-colors hover:bg-stone-950/52"
                   aria-label="Show previous photo"
                   onClick={() =>
                     setActiveIndex(
@@ -137,7 +137,7 @@ export function VehicleGallery({
                 </button>
                 <button
                   type="button"
-                  className="inline-flex size-10 items-center justify-center rounded-full bg-white/92 text-stone-900 shadow-[0_10px_24px_rgba(15,23,42,0.16)] transition-colors hover:bg-white"
+                  className="inline-flex size-10 items-center justify-center rounded-full border border-white/20 bg-stone-950/38 text-white shadow-[0_10px_24px_rgba(15,23,42,0.14)] backdrop-blur-md transition-colors hover:bg-stone-950/52"
                   aria-label="Show next photo"
                   onClick={() =>
                     setActiveIndex(
