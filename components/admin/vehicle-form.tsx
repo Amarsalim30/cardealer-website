@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUp, ImagePlus, LoaderCircle, Star, Trash2 } from "lucide-react";
-import { useActionState, useMemo, useRef, useState } from "react";
+import { ArrowUp, ImagePlus, Star, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { saveVehicleAction } from "@/lib/actions/admin-actions";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,16 @@ type EditableImage = {
   cloudinaryPublicId?: string | null;
   sortOrder: number;
   isHero: boolean;
+  uploadState?: "uploaded" | "pending_file" | "pending_url";
+  sourceUrl?: string | null;
+  pendingFileId?: string | null;
+  pendingFileOrder?: number | null;
+};
+
+type PendingFile = {
+  id: string;
+  file: File;
+  previewUrl: string;
 };
 
 const initialState: ActionState = { success: false, message: "" };
@@ -33,6 +43,10 @@ function makeEditableImages(vehicle?: Vehicle | null): EditableImage[] {
     cloudinaryPublicId: image.cloudinaryPublicId,
     sortOrder: image.sortOrder,
     isHero: image.isHero,
+    uploadState: "uploaded",
+    sourceUrl: null,
+    pendingFileId: null,
+    pendingFileOrder: null,
   }));
 }
 
@@ -49,9 +63,11 @@ export function VehicleForm({
   );
   const [uploadError, setUploadError] = useState("");
   const [manualImageUrl, setManualImageUrl] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [stockCode, setStockCode] = useState(vehicle?.stockCode || "");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const filePickerRef = useRef<HTMLInputElement>(null);
+  const stagedFilesInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const pendingFilesRef = useRef<PendingFile[]>([]);
 
   const serializedImages = useMemo(
     () => JSON.stringify(images),
@@ -59,12 +75,73 @@ export function VehicleForm({
   );
 
   function normalizeImages(nextImages: EditableImage[]) {
-    return nextImages.map((image, index) => ({
-      ...image,
-      sortOrder: index,
-      isHero: index === 0 ? true : image.isHero,
-    }));
+    let pendingFileOrder = 0;
+    const heroIndex = nextImages.findIndex((image) => image.isHero);
+    const resolvedHeroIndex =
+      heroIndex >= 0 ? heroIndex : nextImages.length ? 0 : -1;
+
+    return nextImages.map((image, index) => {
+      const normalizedImage: EditableImage = {
+        ...image,
+        sortOrder: index,
+        isHero: index === resolvedHeroIndex,
+      };
+
+      if (normalizedImage.uploadState === "pending_file") {
+        normalizedImage.pendingFileOrder = pendingFileOrder;
+        pendingFileOrder += 1;
+      } else {
+        normalizedImage.pendingFileOrder = null;
+      }
+
+      if (!normalizedImage.uploadState) {
+        normalizedImage.uploadState = normalizedImage.cloudinaryPublicId
+          ? "uploaded"
+          : normalizedImage.sourceUrl
+            ? "pending_url"
+            : "uploaded";
+      }
+
+      return normalizedImage;
+    });
   }
+
+  function syncStagedFiles(nextImages: EditableImage[], nextPendingFiles: PendingFile[]) {
+    if (!stagedFilesInputRef.current || typeof DataTransfer === "undefined") {
+      return;
+    }
+
+    const transfer = new DataTransfer();
+    const pendingFileLookup = new Map(nextPendingFiles.map((item) => [item.id, item]));
+
+    nextImages
+      .filter((image) => image.uploadState === "pending_file" && image.pendingFileId)
+      .forEach((image) => {
+        const pendingFile = image.pendingFileId
+          ? pendingFileLookup.get(image.pendingFileId)
+          : null;
+
+        if (pendingFile) {
+          transfer.items.add(pendingFile.file);
+        }
+      });
+
+    stagedFilesInputRef.current.files = transfer.files;
+  }
+
+  useEffect(() => {
+    syncStagedFiles(images, pendingFiles);
+  }, [images, pendingFiles]);
+
+  useEffect(() => {
+    pendingFilesRef.current = pendingFiles;
+  }, [pendingFiles]);
+
+  useEffect(() => {
+    return () => {
+      pendingFilesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
 
   function addManualImage() {
     const nextUrl = manualImageUrl.trim();
@@ -73,83 +150,82 @@ export function VehicleForm({
       return;
     }
 
+    setUploadError("");
     setImages((current) =>
       normalizeImages([
         ...current,
         {
           imageUrl: nextUrl,
+          sourceUrl: nextUrl,
           sortOrder: current.length,
           isHero: current.length === 0,
+          uploadState: "pending_url",
+          pendingFileId: null,
+          pendingFileOrder: null,
         },
       ]),
     );
     setManualImageUrl("");
   }
 
-  async function uploadFiles(files: FileList | null) {
+  function uploadFiles(files: FileList | null) {
     if (!files?.length) {
       return;
     }
-
-    if (!stockCode.trim()) {
-      setUploadError(
-        "Enter the stock code first so uploads go into the matching Cloudinary folder.",
-      );
-      return;
-    }
-
-    setUploading(true);
     setUploadError("");
 
-    try {
-      const uploadedImages: EditableImage[] = [];
+    const nextPendingFiles = Array.from(files).map((file) => {
+      const pendingFileId = crypto.randomUUID();
 
-      for (const file of Array.from(files)) {
-        const payload = new FormData();
-        payload.append("file", file);
-        payload.append("stockCode", stockCode);
+      return {
+        id: pendingFileId,
+        file,
+        previewUrl: URL.createObjectURL(file),
+      } satisfies PendingFile;
+    });
 
-        const response = await fetch("/api/cloudinary/upload", {
-          method: "POST",
-          body: payload,
-        });
+    setPendingFiles((current) => [...current, ...nextPendingFiles]);
+    setImages((current) =>
+      normalizeImages([
+        ...current,
+        ...nextPendingFiles.map((item, index) => ({
+          imageUrl: item.previewUrl,
+          cloudinaryPublicId: null,
+          sortOrder: current.length + index,
+          isHero: current.length + index === 0,
+          uploadState: "pending_file" as const,
+          pendingFileId: item.id,
+          pendingFileOrder: null,
+          sourceUrl: null,
+        })),
+      ]),
+    );
 
-        const result = (await response.json()) as {
-          success: boolean;
-          url?: string;
-          publicId?: string;
-          message?: string;
-        };
-
-        if (!result.success || !result.url) {
-          throw new Error(result.message || "Upload failed.");
-        }
-
-        uploadedImages.push({
-          imageUrl: result.url,
-          cloudinaryPublicId: result.publicId,
-          sortOrder: images.length + uploadedImages.length,
-          isHero: images.length + uploadedImages.length === 0,
-        });
-      }
-
-      setImages((current) => normalizeImages([...current, ...uploadedImages]));
-    } catch (error) {
-      setUploadError(
-        error instanceof Error
-          ? error.message
-          : "Image upload failed. Use image URLs if Cloudinary is not configured.",
-      );
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    if (filePickerRef.current) {
+      filePickerRef.current.value = "";
     }
   }
 
   function removeImage(index: number) {
-    setImages((current) => normalizeImages(current.filter((_, item) => item !== index)));
+    setImages((current) => {
+      const removedImage = current[index];
+
+      if (removedImage?.uploadState === "pending_file" && removedImage.pendingFileId) {
+        setPendingFiles((pendingCurrent) => {
+          const target = pendingCurrent.find(
+            (item) => item.id === removedImage.pendingFileId,
+          );
+
+          if (target) {
+            URL.revokeObjectURL(target.previewUrl);
+          }
+
+          return pendingCurrent.filter((item) => item.id !== removedImage.pendingFileId);
+        });
+      }
+
+      return normalizeImages(current.filter((_, item) => item !== index));
+    });
   }
 
   function moveImageUp(index: number) {
@@ -168,10 +244,12 @@ export function VehicleForm({
 
   function setHero(index: number) {
     setImages((current) =>
-      current.map((image, item) => ({
-        ...image,
-        isHero: item === index,
-      })),
+      normalizeImages(
+        current.map((image, item) => ({
+          ...image,
+          isHero: item === index,
+        })),
+      ),
     );
   }
 
@@ -180,6 +258,7 @@ export function VehicleForm({
       <form action={formAction} className="space-y-8">
         <input type="hidden" name="id" value={vehicle?.id || ""} />
         <input type="hidden" name="imagesJson" value={serializedImages} />
+        <input ref={stagedFilesInputRef} type="file" name="pendingFiles" multiple className="hidden" />
 
         <div className="grid gap-5 md:grid-cols-2">
           <div>
@@ -357,15 +436,15 @@ export function VehicleForm({
           <div>
             <p className="text-sm font-semibold text-stone-950">Gallery images</p>
             <p className="mt-2 text-sm leading-7 text-stone-600">
-              Upload directly into the stock-code Cloudinary folder, add image
-              URLs manually, or save without images and sync the folder from the
-              edit screen afterwards.
+              Add files or URLs now, then they only go to Cloudinary when you
+              save the vehicle. Save without images and sync the folder from the
+              edit screen afterwards if you prefer.
             </p>
           </div>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-end">
             <div className="flex-1">
-              <Label htmlFor="manual-image">Add image by URL</Label>
+              <Label htmlFor="manual-image">Stage image from URL</Label>
               <Input
                 id="manual-image"
                 value={manualImageUrl}
@@ -379,17 +458,17 @@ export function VehicleForm({
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-border px-5 text-sm font-semibold text-stone-700"
             >
               <ImagePlus className="size-4" />
-              Add URL
+              Stage URL
             </button>
             <label className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-stone-900 px-5 text-sm font-semibold text-white">
-              {uploading ? <LoaderCircle className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
-              Upload
+              <ImagePlus className="size-4" />
+              Stage Files
               <input
-                ref={fileInputRef}
+                ref={filePickerRef}
                 type="file"
                 multiple
                 className="hidden"
-                onChange={(event) => void uploadFiles(event.target.files)}
+                onChange={(event) => uploadFiles(event.target.files)}
               />
             </label>
           </div>
@@ -413,6 +492,11 @@ export function VehicleForm({
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-stone-800">{image.imageUrl}</p>
+                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
+                      {image.uploadState === "pending_file" || image.uploadState === "pending_url"
+                        ? "Uploads on save"
+                        : "Saved image"}
+                    </p>
                     <Input
                       placeholder="Alt text"
                       value={image.altText || ""}

@@ -632,7 +632,7 @@ export default async function Home() {
                 </div>
               </div>
               <div className="mt-10 pt-2">
-                <Button asChild variant="outline" className="h-12 rounded-xl border-stone-200 px-6 text-[0.9rem] font-semibold text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900">
+                <Button asChild variant="secondary" className="h-12 rounded-xl border-stone-200 px-6 text-[0.9rem] font-semibold !text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:!text-stone-900">
                   <Link href="/financing">Ask About Financing</Link>
                 </Button>
               </div>
@@ -653,7 +653,7 @@ export default async function Home() {
                 </div>
               </div>
               <div className="mt-10 pt-2">
-                <Button asChild variant="outline" className="h-12 rounded-xl border-stone-200 px-6 text-[0.9rem] font-semibold text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:text-stone-900">
+                <Button asChild variant="secondary" className="h-12 rounded-xl border-stone-200 px-6 text-[0.9rem] font-semibold !text-stone-700 shadow-sm transition-all hover:border-stone-300 hover:bg-stone-50 hover:!text-stone-900">
                   <Link href="/trade-in">Value Your Trade</Link>
                 </Button>
               </div>

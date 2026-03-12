@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { uploadVehicleImage } from "@/lib/cloudinary";
+import { uploadVehicleImage, uploadVehicleImageFromUrl } from "@/lib/cloudinary";
 
 export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get("file");
+  const sourceUrl = String(formData.get("sourceUrl") || "").trim();
   const stockCode = String(formData.get("stockCode") || "").trim();
-
-  if (!(file instanceof File)) {
-    return NextResponse.json(
-      { success: false, message: "No file uploaded." },
-      { status: 400 },
-    );
-  }
 
   if (!stockCode) {
     return NextResponse.json(
@@ -25,7 +19,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await uploadVehicleImage(file, { stockCode });
+    const result =
+      file instanceof File
+        ? await uploadVehicleImage(file, { stockCode })
+        : sourceUrl
+          ? await uploadVehicleImageFromUrl(sourceUrl, { stockCode })
+          : null;
+
+    if (!result) {
+      return NextResponse.json(
+        { success: false, message: "Add a file or image URL first." },
+        { status: 400 },
+      );
+    }
 
     return NextResponse.json({
       success: true,

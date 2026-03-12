@@ -1,4 +1,7 @@
-import { listCloudinaryVehicleAssets } from "@/lib/cloudinary";
+import {
+  deleteCloudinaryAssets,
+  listCloudinaryVehicleAssets,
+} from "@/lib/cloudinary";
 import { sortByNewest } from "@/lib/utils";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -241,6 +244,28 @@ function buildSyncedVehicleImages(vehicle: Vehicle, assets: Awaited<ReturnType<t
   })) satisfies Vehicle["images"];
 }
 
+async function collectVehicleCloudinaryPublicIds(vehicle: Vehicle) {
+  const publicIds = new Set(
+    vehicle.images
+      .map((image) => image.cloudinaryPublicId)
+      .filter((value): value is string => Boolean(value)),
+  );
+
+  if (hasCloudinaryConfig && vehicle.stockCode) {
+    try {
+      const { assets } = await listCloudinaryVehicleAssets(vehicle.stockCode);
+      assets.forEach((asset) => publicIds.add(asset.publicId));
+    } catch (error) {
+      console.warn(
+        `[cloudinary] Unable to list folder assets for ${vehicle.stockCode}.`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+
+  return [...publicIds];
+}
+
 async function hydrateVehicleGalleryFromCloudinary(vehicle: Vehicle) {
   if (!hasCloudinaryConfig || !vehicle.stockCode || vehicle.images.length > 1) {
     return vehicle;
@@ -456,6 +481,18 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
   const locations = await getLocations();
   const existing = input.id ? await getVehicleById(input.id) : null;
   const nextVehicle = createVehicleFromInput(input, existing || undefined, locations);
+  const removedCloudinaryPublicIds = existing
+    ? existing.images
+        .filter(
+          (image) =>
+            image.cloudinaryPublicId &&
+            !nextVehicle.images.some(
+              (nextImage) =>
+                nextImage.cloudinaryPublicId === image.cloudinaryPublicId,
+            ),
+        )
+        .map((image) => image.cloudinaryPublicId as string)
+    : [];
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
@@ -519,6 +556,17 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
 
   if (imagesError) {
     throw imagesError;
+  }
+
+  if (removedCloudinaryPublicIds.length) {
+    try {
+      await deleteCloudinaryAssets(removedCloudinaryPublicIds);
+    } catch (error) {
+      console.warn(
+        `[cloudinary] Unable to remove deleted vehicle images for ${nextVehicle.stockCode}.`,
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   return nextVehicle;
@@ -693,6 +741,7 @@ export async function toggleVehicleFeatured(id: string, options: WriteOptions = 
 }
 
 export async function deleteVehicle(id: string, options: WriteOptions = {}) {
+  const existing = await getVehicleById(id);
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
@@ -703,6 +752,18 @@ export async function deleteVehicle(id: string, options: WriteOptions = {}) {
 
   await serverClient.from("vehicle_images").delete().eq("vehicle_id", id);
   await serverClient.from("vehicles").delete().eq("id", id);
+
+  if (existing) {
+    try {
+      const publicIds = await collectVehicleCloudinaryPublicIds(existing);
+      await deleteCloudinaryAssets(publicIds);
+    } catch (error) {
+      console.warn(
+        `[cloudinary] Unable to remove vehicle assets for ${existing.stockCode}.`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
 }
 
 export async function saveLead(input: LeadInput) {

@@ -3,11 +3,23 @@ import { z } from "zod";
 import { stockCategories, vehicleStatuses } from "@/types/dealership";
 
 export const vehicleImageSchema = z.object({
-  imageUrl: z.string().url("Use a valid image URL."),
+  imageUrl: z
+    .string()
+    .trim()
+    .refine(
+      (value) =>
+        /^blob:/i.test(value) ||
+        /^https?:\/\//i.test(value),
+      "Use a valid image URL.",
+    ),
   altText: z.string().trim().optional(),
   cloudinaryPublicId: z.string().trim().optional(),
   sortOrder: z.number().int().min(0),
   isHero: z.boolean(),
+  uploadState: z.enum(["uploaded", "pending_file", "pending_url"]).optional(),
+  sourceUrl: z.string().trim().optional(),
+  pendingFileId: z.string().trim().optional(),
+  pendingFileOrder: z.number().int().min(0).optional(),
 });
 
 export const vehicleFormSchema = z.object({

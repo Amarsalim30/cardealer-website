@@ -18,6 +18,13 @@ function parseImages(value: string | undefined): VehicleImageInput[] {
       ...image,
       sortOrder: image.sortOrder ?? index,
       isHero: Boolean(image.isHero),
+      uploadState: image.uploadState || "uploaded",
+      sourceUrl: image.sourceUrl || undefined,
+      pendingFileId: image.pendingFileId || undefined,
+      pendingFileOrder:
+        typeof image.pendingFileOrder === "number"
+          ? image.pendingFileOrder
+          : undefined,
     }));
   } catch {
     return [];

@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 import { requireAdminSession, signInDemoAdmin, signOutAdmin } from "@/lib/auth";
 import { allowDemoAdmin, hasSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  deleteCloudinaryAssets,
+  uploadVehicleImage,
+  uploadVehicleImageFromUrl,
+} from "@/lib/cloudinary";
 import { mapVehicleFormData } from "@/lib/vehicle-form";
 import {
   deleteVehicle,
@@ -121,9 +126,83 @@ export async function saveVehicleAction(
 
   try {
     const input = mapVehicleFormData(formData);
-    const vehicle = await saveVehicle(input, {
-      forceDemo: session.mode === "demo",
-    });
+    const pendingFiles = formData.getAll("pendingFiles").filter(
+      (entry): entry is File => entry instanceof File,
+    );
+    const uploadedPublicIds: string[] = [];
+    const finalizedImages = [];
+
+    for (const image of input.images) {
+      if (image.uploadState === "pending_url" && image.sourceUrl) {
+        const uploaded = await uploadVehicleImageFromUrl(image.sourceUrl, {
+          stockCode: input.stockCode,
+        });
+        uploadedPublicIds.push(uploaded.publicId);
+        finalizedImages.push({
+          ...image,
+          imageUrl: uploaded.secureUrl,
+          cloudinaryPublicId: uploaded.publicId,
+          uploadState: "uploaded" as const,
+          sourceUrl: null,
+          pendingFileId: null,
+          pendingFileOrder: null,
+        });
+        continue;
+      }
+
+      if (
+        image.uploadState === "pending_file" &&
+        typeof image.pendingFileOrder === "number"
+      ) {
+        const file = pendingFiles[image.pendingFileOrder];
+
+        if (!file) {
+          throw new Error("One of the staged files is missing. Add it again and save.");
+        }
+
+        const uploaded = await uploadVehicleImage(file, {
+          stockCode: input.stockCode,
+        });
+        uploadedPublicIds.push(uploaded.publicId);
+        finalizedImages.push({
+          ...image,
+          imageUrl: uploaded.secureUrl,
+          cloudinaryPublicId: uploaded.publicId,
+          uploadState: "uploaded" as const,
+          sourceUrl: null,
+          pendingFileId: null,
+          pendingFileOrder: null,
+        });
+        continue;
+      }
+
+      finalizedImages.push({
+        ...image,
+        uploadState: "uploaded" as const,
+        sourceUrl: null,
+        pendingFileId: null,
+        pendingFileOrder: null,
+      });
+    }
+
+    const inputWithUploadedImages = {
+      ...input,
+      images: finalizedImages,
+    };
+
+    let vehicle;
+
+    try {
+      vehicle = await saveVehicle(inputWithUploadedImages, {
+        forceDemo: session.mode === "demo",
+      });
+    } catch (error) {
+      if (uploadedPublicIds.length) {
+        await deleteCloudinaryAssets(uploadedPublicIds);
+      }
+
+      throw error;
+    }
     revalidateVehiclePaths(vehicle.slug);
     revalidatePath("/admin/vehicles");
     redirect("/admin/vehicles");
