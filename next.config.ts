@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   images: {
     remotePatterns: [
       {
@@ -14,6 +15,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverExternalPackages: ["cloudinary"],
 };
 
 export default nextConfig;

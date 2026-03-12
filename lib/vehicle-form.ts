@@ -8,25 +8,20 @@ import {
 } from "@/lib/utils";
 import type { VehicleFormInput, VehicleImageInput } from "@/types/dealership";
 
-function isBlobUrl(value: unknown) {
-  return typeof value === "string" && /^blob:/i.test(value.trim());
-}
+type RawVehicleImageInput = Omit<VehicleImageInput, "uploadState"> & {
+  uploadState?: string;
+};
 
-function resolveUploadState(image: VehicleImageInput) {
-  if (image.uploadState) {
-    return image.uploadState;
+function resolveUploadState(image: {
+  uploadState?: string;
+  sourceUrl?: string | null;
+}) {
+  if (image.uploadState === "pending_file") {
+    throw new Error("Staged files must be uploaded before saving.");
   }
 
-  if (image.sourceUrl) {
+  if (image.uploadState === "pending_url" || image.sourceUrl) {
     return "pending_url" as const;
-  }
-
-  if (
-    image.pendingFileId ||
-    typeof image.pendingFileOrder === "number" ||
-    isBlobUrl(image.imageUrl)
-  ) {
-    return "pending_file" as const;
   }
 
   return "uploaded" as const;
@@ -38,20 +33,19 @@ function parseImages(value: string | undefined): VehicleImageInput[] {
   }
 
   try {
-    const parsed = JSON.parse(value) as VehicleImageInput[];
+    const parsed = JSON.parse(value) as RawVehicleImageInput[];
     return parsed.map((image, index) => ({
       ...image,
       sortOrder: image.sortOrder ?? index,
       isHero: Boolean(image.isHero),
       uploadState: resolveUploadState(image),
       sourceUrl: image.sourceUrl || undefined,
-      pendingFileId: image.pendingFileId || undefined,
-      pendingFileOrder:
-        typeof image.pendingFileOrder === "number"
-          ? image.pendingFileOrder
-          : undefined,
     }));
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message) {
+      throw error;
+    }
+
     return [];
   }
 }
@@ -90,16 +84,22 @@ export function mapVehicleFormData(formData: FormData): VehicleFormInput {
   const make = asOptionalString(formData.get("make")) || "";
   const model = asOptionalString(formData.get("model")) || "";
   const year = asOptionalNumber(formData.get("year")) || 0;
-  const derivedStockCode =
-    buildDerivedStockCode({ year, make, model }) ||
-    normalizeStockCode(title) ||
-    "AUTO-STOCK";
+  const derivedIdentifiers = buildVehicleDraftIdentifiers({
+    title,
+    make,
+    model,
+    year,
+  });
 
   const payload = {
     id: asOptionalString(formData.get("id")),
     title,
-    stockCode: derivedStockCode,
-    slug: slugify(title) || undefined,
+    stockCode:
+      asOptionalString(formData.get("resolvedStockCode")) ||
+      derivedIdentifiers.stockCode,
+    slug:
+      asOptionalString(formData.get("resolvedSlug")) ||
+      derivedIdentifiers.slug,
     make,
     model,
     year,
@@ -123,4 +123,24 @@ export function mapVehicleFormData(formData: FormData): VehicleFormInput {
   };
 
   return vehicleFormSchema.parse(payload);
+}
+
+export function buildVehicleDraftIdentifiers({
+  title,
+  make,
+  model,
+  year,
+}: {
+  title: string;
+  make: string;
+  model: string;
+  year: number;
+}) {
+  return {
+    stockCode:
+      buildDerivedStockCode({ year, make, model }) ||
+      normalizeStockCode(title) ||
+      "AUTO-STOCK",
+    slug: slugify(title) || undefined,
+  };
 }

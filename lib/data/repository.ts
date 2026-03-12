@@ -5,14 +5,15 @@ import {
 import { sortByNewest } from "@/lib/utils";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { hasCloudinaryConfig } from "@/lib/env";
+import { allowLocalDemoMode, hasCloudinaryConfig } from "@/lib/env";
 import {
   applyInventoryFilters,
   buildFacets,
   createVehicleFromInput,
   paginateVehicles,
 } from "@/lib/data/filters";
-import { getDemoState } from "@/lib/data/demo-store";
+import { RepositoryUnavailableError } from "@/lib/data/errors";
+import { getDemoState, mutateDemoState } from "@/lib/data/demo-store";
 import type {
   InventoryQuery,
   LeadInboxFilter,
@@ -40,8 +41,6 @@ type WriteOptions = {
 type SupabaseClient =
   | NonNullable<ReturnType<typeof createSupabasePublicClient>>
   | NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
-
-let useDemoReadFallback = false;
 
 type SupabaseErrorLike = {
   code?: string;
@@ -71,23 +70,59 @@ function isMissingSupabaseTableError(error: unknown) {
   );
 }
 
-function handleSupabaseReadFailure(prefix: string, error: unknown) {
-  if (isMissingSupabaseTableError(error)) {
-    // The remote project is missing expected schema; avoid repeated failed reads
-    // and rely on the bundled dealership dataset until schema is provisioned.
-    useDemoReadFallback = true;
-    return;
-  }
-
+function logSupabaseReadFailure(prefix: string, error: unknown) {
   console.error(prefix, error instanceof Error ? error.message : error);
 }
 
-function getPublicReadClient() {
-  if (useDemoReadFallback) {
+function getLocalDemoState() {
+  return allowLocalDemoMode ? getDemoState() : null;
+}
+
+function createAdminUnavailableError(message: string) {
+  return new RepositoryUnavailableError("admin_unavailable", message);
+}
+
+function createPersistenceUnavailableError(message: string) {
+  return new RepositoryUnavailableError("persistence_unavailable", message);
+}
+
+function handlePublicReadFailure<T>(
+  prefix: string,
+  error: unknown,
+  demoValue: T,
+  fallbackValue: T,
+) {
+  if (allowLocalDemoMode) {
+    if (!isMissingSupabaseTableError(error)) {
+      logSupabaseReadFailure(prefix, error);
+    }
+    return clone(demoValue);
+  }
+
+  logSupabaseReadFailure(prefix, error);
+  return fallbackValue;
+}
+
+function handleAdminReadFailure<T>(prefix: string, error: unknown, demoValue: T) {
+  if (allowLocalDemoMode) {
+    if (!isMissingSupabaseTableError(error)) {
+      logSupabaseReadFailure(prefix, error);
+    }
+    return clone(demoValue);
+  }
+
+  logSupabaseReadFailure(prefix, error);
+  throw createAdminUnavailableError(
+    "Admin data is unavailable until Supabase is configured and the schema is ready.",
+  );
+}
+
+function requireServerClientOrDemo(message: string, forceDemo?: boolean) {
+  if (forceDemo || allowLocalDemoMode) {
     return null;
   }
 
-  return createSupabasePublicClient();
+  throw createPersistenceUnavailableError(message);
 }
 
 function mapSupabaseVehicleRow(row: Record<string, unknown>): Vehicle {
@@ -296,10 +331,11 @@ async function hydrateVehicleGalleryFromCloudinary(vehicle: Vehicle) {
 }
 
 export async function getLocations() {
-  const supabase = getPublicReadClient();
+  const supabase = createSupabasePublicClient();
+  const demoState = getLocalDemoState();
 
   if (!supabase) {
-    return clone(getDemoState().locations);
+    return demoState ? clone(demoState.locations) : [];
   }
 
   const { data, error } = await supabase
@@ -308,8 +344,53 @@ export async function getLocations() {
     .order("is_primary", { ascending: false });
 
   if (error) {
-    handleSupabaseReadFailure("[supabase] Failed to fetch locations", error);
-    return clone(getDemoState().locations);
+    return handlePublicReadFailure(
+      "[supabase] Failed to fetch locations",
+      error,
+      demoState?.locations || [],
+      [],
+    );
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    addressLine: row.address_line,
+    city: row.city,
+    phone: row.phone,
+    email: row.email,
+    hours: row.hours,
+    mapUrl: row.map_url,
+    isPrimary: row.is_primary,
+    createdAt: row.created_at,
+  })) satisfies Location[];
+}
+
+export async function getAdminLocations() {
+  const serverClient = await createSupabaseServerClient();
+  const demoState = getLocalDemoState();
+
+  if (!serverClient) {
+    if (demoState) {
+      return clone(demoState.locations);
+    }
+
+    throw createAdminUnavailableError(
+      "Admin locations are unavailable until Supabase is configured.",
+    );
+  }
+
+  const { data, error } = await serverClient
+    .from("locations")
+    .select("*")
+    .order("is_primary", { ascending: false });
+
+  if (error) {
+    return handleAdminReadFailure(
+      "[supabase] Failed to fetch admin locations",
+      error,
+      demoState?.locations || [],
+    );
   }
 
   return (data || []).map((row) => ({
@@ -327,10 +408,11 @@ export async function getLocations() {
 }
 
 export async function getReviews() {
-  const supabase = getPublicReadClient();
+  const supabase = createSupabasePublicClient();
+  const demoState = getLocalDemoState();
 
   if (!supabase) {
-    return clone(getDemoState().reviews);
+    return demoState ? clone(demoState.reviews) : [];
   }
 
   const { data, error } = await supabase
@@ -340,8 +422,12 @@ export async function getReviews() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    handleSupabaseReadFailure("[supabase] Failed to fetch reviews", error);
-    return clone(getDemoState().reviews);
+    return handlePublicReadFailure(
+      "[supabase] Failed to fetch reviews",
+      error,
+      demoState?.reviews || [],
+      [],
+    );
   }
 
   return (data || []).map((row) => ({
@@ -357,18 +443,23 @@ export async function getReviews() {
 }
 
 export async function getAllVehicles() {
-  const supabase = getPublicReadClient();
+  const supabase = createSupabasePublicClient();
+  const demoState = getLocalDemoState();
 
   if (!supabase) {
-    return clone(getDemoState().vehicles);
+    return demoState ? clone(demoState.vehicles) : [];
   }
 
   try {
     const rows = await selectAllVehicleRows(supabase);
     return rows.map(mapSupabaseVehicleRow);
   } catch (error) {
-    handleSupabaseReadFailure("[supabase] Failed to fetch vehicles", error);
-    return clone(getDemoState().vehicles);
+    return handlePublicReadFailure(
+      "[supabase] Failed to fetch vehicles",
+      error,
+      demoState?.vehicles || [],
+      [],
+    );
   }
 }
 
@@ -404,7 +495,8 @@ export async function getInventoryFacets() {
 }
 
 export async function getVehicleBySlug(slug: string) {
-  const supabase = getPublicReadClient();
+  const supabase = createSupabasePublicClient();
+  const demoState = getLocalDemoState();
 
   if (supabase) {
     try {
@@ -414,11 +506,24 @@ export async function getVehicleBySlug(slug: string) {
         return hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row));
       }
     } catch (error) {
-      handleSupabaseReadFailure("[supabase] Failed to fetch vehicle by slug", error);
+      if (allowLocalDemoMode && demoState) {
+        return (
+          demoState.vehicles.find(
+            (item) => item.slug === slug && item.status === "published",
+          ) || null
+        );
+      }
+
+      logSupabaseReadFailure("[supabase] Failed to fetch vehicle by slug", error);
+      return null;
     }
   }
 
-  const vehicles = await getAllVehicles();
+  if (!demoState) {
+    return null;
+  }
+
+  const vehicles = clone(demoState.vehicles);
   const vehicle =
     vehicles.find(
       (item) => item.slug === slug && item.status === "published",
@@ -429,21 +534,29 @@ export async function getVehicleBySlug(slug: string) {
 
 export async function getVehicleById(id: string) {
   const serverClient = await createSupabaseServerClient();
+  const demoState = getLocalDemoState();
 
   if (serverClient) {
     try {
       const row = await selectVehicleRowById(serverClient, id);
 
-      if (row) {
-        return hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row));
-      }
+      return row ? hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row)) : null;
     } catch (error) {
-      handleSupabaseReadFailure("[supabase] Failed to fetch vehicle by id", error);
+      return handleAdminReadFailure(
+        "[supabase] Failed to fetch vehicle by id",
+        error,
+        demoState?.vehicles.find((item) => item.id === id) || null,
+      );
     }
   }
 
-  const vehicles = await getAllVehicles();
-  const vehicle = vehicles.find((item) => item.id === id) || null;
+  if (!demoState) {
+    throw createAdminUnavailableError(
+      "Vehicle data is unavailable until Supabase is configured.",
+    );
+  }
+
+  const vehicle = demoState.vehicles.find((item) => item.id === id) || null;
   return vehicle ? hydrateVehicleGalleryFromCloudinary(vehicle) : null;
 }
 
@@ -463,22 +576,32 @@ export async function getSimilarVehicles(vehicle: Vehicle, limit = 3) {
 
 export async function getAdminVehicles() {
   const serverClient = await createSupabaseServerClient();
+  const demoState = getLocalDemoState();
 
   if (!serverClient) {
-    return getAllVehicles();
+    if (demoState) {
+      return clone(demoState.vehicles);
+    }
+
+    throw createAdminUnavailableError(
+      "Admin inventory is unavailable until Supabase is configured.",
+    );
   }
 
   try {
     const rows = await selectAllVehicleRows(serverClient);
     return rows.map(mapSupabaseVehicleRow);
   } catch (error) {
-    handleSupabaseReadFailure("[supabase] Failed to fetch admin vehicles", error);
-    return getAllVehicles();
+    return handleAdminReadFailure(
+      "[supabase] Failed to fetch admin vehicles",
+      error,
+      demoState?.vehicles || [],
+    );
   }
 }
 
 export async function saveVehicle(input: VehicleFormInput, options: WriteOptions = {}) {
-  const locations = await getLocations();
+  const locations = await getAdminLocations();
   const existing = input.id ? await getVehicleById(input.id) : null;
   const nextVehicle = createVehicleFromInput(input, existing || undefined, locations);
   const removedCloudinaryPublicIds = existing
@@ -496,14 +619,22 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
-    const state = getDemoState();
-    const index = state.vehicles.findIndex((vehicle) => vehicle.id === nextVehicle.id);
+    requireServerClientOrDemo(
+      "Persistent vehicle storage is unavailable until Supabase is configured.",
+      options.forceDemo,
+    );
+    mutateDemoState((state) => {
+      const index = state.vehicles.findIndex(
+        (vehicle) => vehicle.id === nextVehicle.id,
+      );
 
-    if (index >= 0) {
-      state.vehicles[index] = nextVehicle;
-    } else {
+      if (index >= 0) {
+        state.vehicles[index] = nextVehicle;
+        return;
+      }
+
       state.vehicles.unshift(nextVehicle);
-    }
+    });
 
     return nextVehicle;
   }
@@ -583,25 +714,32 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
 
 export async function getVehicleByStockCode(stockCode: string) {
   const serverClient = await createSupabaseServerClient();
+  const demoState = getLocalDemoState();
 
   if (serverClient) {
     try {
       const row = await selectVehicleRowByStockCode(serverClient, stockCode);
 
-      if (row) {
-        return hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row));
-      }
+      return row ? hydrateVehicleGalleryFromCloudinary(mapSupabaseVehicleRow(row)) : null;
     } catch (error) {
-      handleSupabaseReadFailure(
+      return handleAdminReadFailure(
         "[supabase] Failed to fetch vehicle by stock code",
         error,
+        demoState?.vehicles.find(
+          (item) => item.stockCode.toLowerCase() === stockCode.toLowerCase(),
+        ) || null,
       );
     }
   }
 
-  const vehicles = await getAllVehicles();
+  if (!demoState) {
+    throw createAdminUnavailableError(
+      "Vehicle data is unavailable until Supabase is configured.",
+    );
+  }
+
   const vehicle =
-    vehicles.find(
+    demoState.vehicles.find(
       (item) => item.stockCode.toLowerCase() === stockCode.toLowerCase(),
     ) || null;
 
@@ -625,22 +763,27 @@ export async function syncVehicleImagesFromCloudinary(
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
-    const state = getDemoState();
-    const target = state.vehicles.find((item) => item.id === id);
+    requireServerClientOrDemo(
+      "Cloudinary sync is unavailable until Supabase is configured.",
+      options.forceDemo,
+    );
+    return mutateDemoState((state) => {
+      const target = state.vehicles.find((item) => item.id === id);
 
-    if (!target) {
-      throw new Error("Vehicle not found in demo state.");
-    }
+      if (!target) {
+        throw new Error("Vehicle not found in demo state.");
+      }
 
-    target.images = syncedImages;
-    target.heroImageUrl = heroImageUrl;
-    target.updatedAt = updatedAt;
+      target.images = syncedImages;
+      target.heroImageUrl = heroImageUrl;
+      target.updatedAt = updatedAt;
 
-    return {
-      vehicle: clone(target),
-      assetFolder,
-      syncedCount: syncedImages.length,
-    };
+      return {
+        vehicle: clone(target),
+        assetFolder,
+        syncedCount: syncedImages.length,
+      };
+    });
   }
 
   const { error: deleteError } = await serverClient
@@ -701,21 +844,30 @@ export async function updateVehicleStatus(
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
-    const state = getDemoState();
-    const vehicle = state.vehicles.find((item) => item.id === id);
+    requireServerClientOrDemo(
+      "Vehicle publishing is unavailable until Supabase is configured.",
+      options.forceDemo,
+    );
+    return mutateDemoState((state) => {
+      const vehicle = state.vehicles.find((item) => item.id === id);
 
-    if (vehicle) {
-      vehicle.status = status;
-      vehicle.updatedAt = new Date().toISOString();
-    }
+      if (vehicle) {
+        vehicle.status = status;
+        vehicle.updatedAt = new Date().toISOString();
+      }
 
-    return vehicle || null;
+      return vehicle || null;
+    });
   }
 
-  await serverClient
+  const { error } = await serverClient
     .from("vehicles")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
 
   return getVehicleById(id);
 }
@@ -730,21 +882,30 @@ export async function toggleVehicleFeatured(id: string, options: WriteOptions = 
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
-    const state = getDemoState();
-    const vehicle = state.vehicles.find((item) => item.id === id);
+    requireServerClientOrDemo(
+      "Vehicle featured updates are unavailable until Supabase is configured.",
+      options.forceDemo,
+    );
+    return mutateDemoState((state) => {
+      const vehicle = state.vehicles.find((item) => item.id === id);
 
-    if (vehicle) {
-      vehicle.featured = nextFeatured;
-      vehicle.updatedAt = new Date().toISOString();
-    }
+      if (vehicle) {
+        vehicle.featured = nextFeatured;
+        vehicle.updatedAt = new Date().toISOString();
+      }
 
-    return vehicle || null;
+      return vehicle || null;
+    });
   }
 
-  await serverClient
+  const { error } = await serverClient
     .from("vehicles")
     .update({ featured: nextFeatured, updated_at: new Date().toISOString() })
     .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
 
   return getVehicleById(id);
 }
@@ -754,8 +915,13 @@ export async function deleteVehicle(id: string, options: WriteOptions = {}) {
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
-    const state = getDemoState();
-    state.vehicles = state.vehicles.filter((vehicle) => vehicle.id !== id);
+    requireServerClientOrDemo(
+      "Vehicle deletion is unavailable until Supabase is configured.",
+      options.forceDemo,
+    );
+    mutateDemoState((state) => {
+      state.vehicles = state.vehicles.filter((vehicle) => vehicle.id !== id);
+    });
     return;
   }
 
@@ -800,7 +966,12 @@ export async function saveLead(input: LeadInput) {
   const serverClient = await createSupabaseServerClient();
 
   if (!serverClient) {
-    getDemoState().leads.unshift(record);
+    requireServerClientOrDemo(
+      "Lead capture is unavailable until Supabase is configured.",
+    );
+    mutateDemoState((state) => {
+      state.leads.unshift(record);
+    });
     return record;
   }
 
@@ -834,7 +1005,12 @@ export async function saveTestDriveRequest(input: TestDriveRequestInput) {
   const serverClient = await createSupabaseServerClient();
 
   if (!serverClient) {
-    getDemoState().testDriveRequests.unshift(record);
+    requireServerClientOrDemo(
+      "Viewing requests are unavailable until Supabase is configured.",
+    );
+    mutateDemoState((state) => {
+      state.testDriveRequests.unshift(record);
+    });
     return record;
   }
 
@@ -865,7 +1041,12 @@ export async function saveTradeInRequest(input: TradeInRequestInput) {
   const serverClient = await createSupabaseServerClient();
 
   if (!serverClient) {
-    getDemoState().tradeInRequests.unshift(record);
+    requireServerClientOrDemo(
+      "Trade-in requests are unavailable until Supabase is configured.",
+    );
+    mutateDemoState((state) => {
+      state.tradeInRequests.unshift(record);
+    });
     return record;
   }
 
@@ -952,15 +1133,22 @@ function toLeadInboxItems(
 async function fetchLeadTables() {
   const serverClient = await createSupabaseServerClient();
   if (!serverClient) {
-    const state = getDemoState();
-    return {
-      leads: clone(state.leads),
-      testDriveRequests: clone(state.testDriveRequests),
-      tradeInRequests: clone(state.tradeInRequests),
-    };
+    const demoState = getLocalDemoState();
+
+    if (demoState) {
+      return {
+        leads: clone(demoState.leads),
+        testDriveRequests: clone(demoState.testDriveRequests),
+        tradeInRequests: clone(demoState.tradeInRequests),
+      };
+    }
+
+    throw createAdminUnavailableError(
+      "Lead inbox is unavailable until Supabase is configured.",
+    );
   }
 
-  const [leadsResult, testDriveResult, tradeInResult, vehicles] = await Promise.all([
+  const [leadsResult, testDriveResult, tradeInResult, vehiclesResult] = await Promise.all([
     serverClient.from("leads").select("*").order("created_at", { ascending: false }),
     serverClient
       .from("test_drive_requests")
@@ -970,10 +1158,31 @@ async function fetchLeadTables() {
       .from("trade_in_requests")
       .select("*")
       .order("created_at", { ascending: false }),
-    getAdminVehicles(),
+    serverClient.from("vehicles").select("id, title"),
   ]);
 
-  const vehicleLookup = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle.title]));
+  if (leadsResult.error || testDriveResult.error || tradeInResult.error || vehiclesResult.error) {
+    return handleAdminReadFailure(
+      "[supabase] Failed to fetch admin leads",
+      leadsResult.error ||
+        testDriveResult.error ||
+        tradeInResult.error ||
+        vehiclesResult.error,
+      {
+        leads: getLocalDemoState()?.leads || [],
+        testDriveRequests: getLocalDemoState()?.testDriveRequests || [],
+        tradeInRequests: getLocalDemoState()?.tradeInRequests || [],
+      },
+    );
+  }
+
+  const vehicles = (vehiclesResult.data || []) as Array<Record<string, unknown>>;
+  const vehicleLookup = new Map(
+    vehicles.map((vehicle) => [
+      String(vehicle.id),
+      vehicle.title ? String(vehicle.title) : undefined,
+    ]),
+  );
 
   return {
     leads: ((leadsResult.data || []) as Array<Record<string, unknown>>).map(

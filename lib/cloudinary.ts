@@ -1,9 +1,24 @@
+import "server-only";
+
 import { v2 as cloudinary } from "cloudinary";
 
 import { env, hasCloudinaryConfig } from "@/lib/env";
 import { normalizeStockCode } from "@/lib/utils";
+import {
+  getVehicleAssetFolder,
+  SUPPORTED_IMAGE_FORMATS,
+} from "@/lib/vehicle-image-upload";
 
-const SUPPORTED_IMAGE_FORMATS = new Set(["jpg", "jpeg", "png", "webp"]);
+export {
+  getVehicleAssetFolder,
+  SUPPORTED_IMAGE_FORMATS,
+  SUPPORTED_IMAGE_MIME_TYPES,
+  validateVehicleImageUpload,
+  VEHICLE_IMAGE_UPLOAD_MAX_BYTES,
+  VEHICLE_IMAGE_UPLOAD_MAX_FILES,
+} from "@/lib/vehicle-image-upload";
+
+const SUPPORTED_IMAGE_FORMAT_SET = new Set(SUPPORTED_IMAGE_FORMATS);
 
 type CloudinaryAssetResource = {
   public_id?: string;
@@ -20,12 +35,34 @@ export type CloudinaryVehicleAsset = {
   filename: string;
 };
 
-function getVehicleAssetFolder(stockCode?: string) {
-  const normalizedStockCode = stockCode
-    ? normalizeStockCode(stockCode)
-    : "";
+export function buildVehicleImageUploadSignature(options: { stockCode?: string } = {}) {
+  if (!hasCloudinaryConfig) {
+    throw new Error("Cloudinary is not configured.");
+  }
 
-  return normalizedStockCode ? normalizedStockCode.toLowerCase() : "unsorted-vehicles";
+  const timestamp = Math.floor(Date.now() / 1000);
+  const assetFolder = getVehicleAssetFolder(options.stockCode);
+  const signedParams = {
+    allowed_formats: SUPPORTED_IMAGE_FORMATS.join(","),
+    asset_folder: assetFolder,
+    timestamp,
+    unique_filename: true,
+    use_filename: true,
+  };
+  const signature = cloudinary.utils.api_sign_request(
+    signedParams,
+    env.cloudinaryApiSecret,
+  );
+
+  return {
+    allowedFormats: [...SUPPORTED_IMAGE_FORMATS],
+    apiKey: env.cloudinaryApiKey,
+    assetFolder,
+    cloudName: env.cloudinaryCloudName,
+    signature,
+    timestamp,
+    uploadUrl: `https://api.cloudinary.com/v1_1/${env.cloudinaryCloudName}/image/upload`,
+  };
 }
 
 if (hasCloudinaryConfig) {
@@ -85,7 +122,9 @@ async function withRetries<T>(
 }
 
 function isSupportedImageAsset(resource: CloudinaryAssetResource) {
-  return SUPPORTED_IMAGE_FORMATS.has(String(resource.format || "").toLowerCase());
+  return SUPPORTED_IMAGE_FORMAT_SET.has(
+    String(resource.format || "").toLowerCase() as (typeof SUPPORTED_IMAGE_FORMATS)[number],
+  );
 }
 
 function getAssetStem(resource: CloudinaryAssetResource) {

@@ -8,13 +8,6 @@ const httpImageUrlSchema = z
   .trim()
   .url("Use a valid image URL.")
   .refine((value) => /^https?:\/\//i.test(value), "Use a valid image URL.");
-const blobImageUrlSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) => /^blob:/i.test(value),
-    "Staged files must use a blob preview URL.",
-  );
 const vehicleImageBaseSchema = z.object({
   altText: z.string().trim().optional(),
   sortOrder: z.number().int().min(0),
@@ -26,8 +19,6 @@ const uploadedVehicleImageSchema = vehicleImageBaseSchema.extend({
   imageUrl: httpImageUrlSchema,
   cloudinaryPublicId: z.string().trim().min(1).optional().nullable(),
   sourceUrl: nullishSchema,
-  pendingFileId: nullishSchema,
-  pendingFileOrder: nullishSchema,
 });
 
 const pendingUrlVehicleImageSchema = vehicleImageBaseSchema.extend({
@@ -35,29 +26,11 @@ const pendingUrlVehicleImageSchema = vehicleImageBaseSchema.extend({
   imageUrl: httpImageUrlSchema,
   sourceUrl: httpImageUrlSchema,
   cloudinaryPublicId: nullishSchema,
-  pendingFileId: nullishSchema,
-  pendingFileOrder: nullishSchema,
-});
-
-const pendingFileVehicleImageSchema = vehicleImageBaseSchema.extend({
-  uploadState: z.literal("pending_file"),
-  imageUrl: blobImageUrlSchema,
-  cloudinaryPublicId: nullishSchema,
-  sourceUrl: nullishSchema,
-  pendingFileId: z
-    .string({ error: "Staged files are missing. Add them again." })
-    .trim()
-    .min(1, "Staged files are missing. Add them again."),
-  pendingFileOrder: z
-    .number({ error: "Staged files are missing. Add them again." })
-    .int()
-    .min(0),
 });
 
 export const vehicleImageSchema = z.discriminatedUnion("uploadState", [
   uploadedVehicleImageSchema,
   pendingUrlVehicleImageSchema,
-  pendingFileVehicleImageSchema,
 ]);
 
 export const vehicleFormSchema = z.object({

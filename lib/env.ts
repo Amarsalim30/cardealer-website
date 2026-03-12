@@ -14,6 +14,9 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY || "",
   adminNotificationEmail:
     process.env.ADMIN_NOTIFICATION_EMAIL || "sales@example.com",
+  demoAdminEmail: process.env.DEMO_ADMIN_EMAIL || "",
+  demoAdminPassword: process.env.DEMO_ADMIN_PASSWORD || "",
+  demoAdminSessionSecret: process.env.DEMO_ADMIN_SESSION_SECRET || "",
 };
 
 export const hasSupabaseConfig = Boolean(
@@ -30,5 +33,17 @@ export const hasCloudinaryConfig = Boolean(
 
 export const hasResendConfig = Boolean(env.resendApiKey);
 
-export const allowDemoAdmin =
-  process.env.ENABLE_DEMO_ADMIN === "1" || process.env.NODE_ENV !== "production";
+export const isLocalDevelopment = process.env.NODE_ENV === "development";
+export const isE2ETestRuntime = process.env.E2E_TEST_MODE === "1";
+
+export const allowLocalDemoMode =
+  process.env.ENABLE_DEMO_ADMIN === "1" &&
+  (isLocalDevelopment || isE2ETestRuntime);
+
+export const hasDemoAdminCredentials = Boolean(
+  env.demoAdminEmail &&
+    env.demoAdminPassword &&
+    env.demoAdminSessionSecret,
+);
+
+export const allowDemoAdmin = allowLocalDemoMode && hasDemoAdminCredentials;

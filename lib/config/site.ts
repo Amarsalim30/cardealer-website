@@ -25,10 +25,6 @@ export const siteConfig = {
     sort: "latest",
     pageSize: 9,
   },
-  demoAdmin: {
-    email: "admin@oceanmotors.demo",
-    password: "demo-admin",
-  },
 } as const;
 
 export const homeStats: HomeStats = {

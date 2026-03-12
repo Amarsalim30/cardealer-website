@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 
 import { loginAdminAction } from "@/lib/actions/admin-actions";
-import { siteConfig } from "@/lib/config/site";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,9 +28,11 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
 
       {demoMode ? (
         <div className="mt-6 rounded-[24px] border border-border bg-stone-50 p-5 text-sm text-stone-600">
-          <p className="font-semibold text-stone-900">Local demo admin</p>
-          <p className="mt-2">Email: {siteConfig.demoAdmin.email}</p>
-          <p>Password: {siteConfig.demoAdmin.password}</p>
+          <p className="font-semibold text-stone-900">Local demo admin enabled</p>
+          <p className="mt-2">
+            Demo access is available only in local development. Use the configured
+            demo credentials from your environment.
+          </p>
         </div>
       ) : null}
 
@@ -46,7 +47,9 @@ export function LoginForm({ demoMode }: { demoMode: boolean }) {
         </div>
 
         {state.message ? (
-          <p className="text-sm text-red-600">{state.message}</p>
+          <p className="text-sm text-red-600" role="alert">
+            {state.message}
+          </p>
         ) : null}
 
         <SubmitButton className="w-full">Sign in</SubmitButton>

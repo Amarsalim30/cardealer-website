@@ -1,6 +1,7 @@
 "use server";
 
 import { leadFormSchema, testDriveFormSchema, tradeInFormSchema } from "@/lib/validation/forms";
+import { isRepositoryUnavailableError } from "@/lib/data/errors";
 import { sendNotificationEmail } from "@/lib/resend";
 import {
   saveLead,
@@ -18,6 +19,14 @@ function validationErrorState(error: {
     message: "Please review the highlighted fields and try again.",
     fieldErrors: error.flatten().fieldErrors,
   };
+}
+
+function buildSubmissionFailureMessage(error: unknown, fallbackMessage: string) {
+  if (isRepositoryUnavailableError(error)) {
+    return error.message;
+  }
+
+  return fallbackMessage;
 }
 
 export async function submitLeadAction(
@@ -61,10 +70,13 @@ export async function submitLeadAction(
       success: true,
       message: "Thanks. The sales team will reach out shortly.",
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      message: "We could not save your enquiry right now. Please try again.",
+      message: buildSubmissionFailureMessage(
+        error,
+        "We could not save your enquiry right now. Please try again.",
+      ),
     };
   }
 }
@@ -108,10 +120,13 @@ export async function submitTestDriveAction(
       success: true,
       message: "Your viewing request is in. We will confirm the slot shortly.",
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      message: "We could not save the request right now. Please try again.",
+      message: buildSubmissionFailureMessage(
+        error,
+        "We could not save the request right now. Please try again.",
+      ),
     };
   }
 }
@@ -159,10 +174,13 @@ export async function submitTradeInAction(
       success: true,
       message: "Thanks. We will review your trade-in details and follow up.",
     };
-  } catch {
+  } catch (error) {
     return {
       success: false,
-      message: "We could not save the trade-in request right now.",
+      message: buildSubmissionFailureMessage(
+        error,
+        "We could not save the trade-in request right now.",
+      ),
     };
   }
 }

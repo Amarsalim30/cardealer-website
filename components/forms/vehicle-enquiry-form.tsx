@@ -8,12 +8,14 @@ import {
   submitLeadAction,
   submitTestDriveAction,
 } from "@/lib/actions/public-actions";
+import { getActionFieldState } from "@/components/forms/action-form-field-helpers";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import type { ActionState, LeadType } from "@/types/dealership";
 import { cn } from "@/lib/utils";
@@ -107,7 +109,13 @@ export function VehicleEnquiryForm({
 
   const activeIntent = intentMeta[intent];
   const state = intent === "viewing" ? testDriveState : leadState;
-  const fieldPrefix = `vehicle-enquiry-${intent}`;
+  const formId = `vehicle-enquiry-${intent}`;
+  const phoneField = getActionFieldState(state, formId, "phone");
+  const nameField = getActionFieldState(state, formId, "name");
+  const emailField = getActionFieldState(state, formId, "email");
+  const preferredDateField = getActionFieldState(state, formId, "preferredDate");
+  const preferredTimeField = getActionFieldState(state, formId, "preferredTime");
+  const messageField = getActionFieldState(state, formId, "message");
 
   return (
     <Card className="rounded-[28px] p-5 lg:p-6">
@@ -161,9 +169,7 @@ export function VehicleEnquiryForm({
                   : "border-transparent bg-transparent text-stone-600 hover:bg-white/75 hover:text-stone-900",
               )}
             >
-              <span className="block text-sm font-semibold">
-                {item.label}
-              </span>
+              <span className="block text-sm font-semibold">{item.label}</span>
             </button>
           ))}
         </div>
@@ -181,51 +187,87 @@ export function VehicleEnquiryForm({
           <form action={testDriveAction} className="mt-5 space-y-3">
             <input type="hidden" name="vehicleId" value={vehicleId || ""} />
             <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
-            <input
-              type="hidden"
-              name="source"
-              value={`${source} - viewing`}
-            />
+            <input type="hidden" name="source" value={`${source} - viewing`} />
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-phone`}>Phone</Label>
+              <Label htmlFor={`${formId}-phone`}>Phone</Label>
               <Input
-                id={`${fieldPrefix}-phone`}
+                id={`${formId}-phone`}
                 name="phone"
                 placeholder="+254..."
                 className="border-primary/35 bg-[#fffaf5]"
+                required
+                {...phoneField.inputProps}
               />
-              {state.fieldErrors?.phone ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.phone[0]}
-                </p>
-              ) : null}
+              <FieldError id={phoneField.errorId} error={phoneField.error} />
             </div>
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-name`}>Full name</Label>
+              <Label htmlFor={`${formId}-name`}>Full name</Label>
               <Input
-                id={`${fieldPrefix}-name`}
+                id={`${formId}-name`}
                 name="name"
                 placeholder="Your full name"
+                required
+                {...nameField.inputProps}
               />
-              {state.fieldErrors?.name ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.name[0]}
-                </p>
-              ) : null}
+              <FieldError id={nameField.errorId} error={nameField.error} />
             </div>
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-message`}>
+              <Label htmlFor={`${formId}-email`}>Email</Label>
+              <Input
+                id={`${formId}-email`}
+                name="email"
+                type="email"
+                placeholder="Optional email address"
+                {...emailField.inputProps}
+              />
+              <FieldError id={emailField.errorId} error={emailField.error} />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor={`${formId}-preferred-date`}>Preferred date</Label>
+                <Input
+                  id={`${formId}-preferred-date`}
+                  name="preferredDate"
+                  type="date"
+                  required
+                  {...preferredDateField.inputProps}
+                />
+                <FieldError
+                  id={preferredDateField.errorId}
+                  error={preferredDateField.error}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`${formId}-preferred-time`}>Preferred time</Label>
+                <Input
+                  id={`${formId}-preferred-time`}
+                  name="preferredTime"
+                  placeholder="11:00 AM"
+                  {...preferredTimeField.inputProps}
+                />
+                <FieldError
+                  id={preferredTimeField.errorId}
+                  error={preferredTimeField.error}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor={`${formId}-message`}>
                 {activeIntent.messageLabel}
               </Label>
               <Textarea
-                id={`${fieldPrefix}-message`}
+                id={`${formId}-message`}
                 name="message"
                 placeholder={activeIntent.messagePlaceholder}
                 className="min-h-24"
+                {...messageField.inputProps}
               />
+              <FieldError id={messageField.errorId} error={messageField.error} />
             </div>
 
             {state.message ? (
@@ -234,6 +276,7 @@ export function VehicleEnquiryForm({
                   "text-sm",
                   state.success ? "text-emerald-700" : "text-red-600",
                 )}
+                role={state.success ? undefined : "alert"}
               >
                 {state.message}
               </p>
@@ -248,51 +291,45 @@ export function VehicleEnquiryForm({
             <input type="hidden" name="vehicleId" value={vehicleId || ""} />
             <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
             <input type="hidden" name="leadType" value={activeIntent.leadType} />
-            <input
-              type="hidden"
-              name="source"
-              value={`${source} - ${intent}`}
-            />
+            <input type="hidden" name="source" value={`${source} - ${intent}`} />
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-phone`}>Phone</Label>
+              <Label htmlFor={`${formId}-phone`}>Phone</Label>
               <Input
-                id={`${fieldPrefix}-phone`}
+                id={`${formId}-phone`}
                 name="phone"
                 placeholder="+254..."
                 className="border-primary/35 bg-[#fffaf5]"
+                required
+                {...phoneField.inputProps}
               />
-              {state.fieldErrors?.phone ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.phone[0]}
-                </p>
-              ) : null}
+              <FieldError id={phoneField.errorId} error={phoneField.error} />
             </div>
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-name`}>Full name</Label>
+              <Label htmlFor={`${formId}-name`}>Full name</Label>
               <Input
-                id={`${fieldPrefix}-name`}
+                id={`${formId}-name`}
                 name="name"
                 placeholder="Your full name"
+                required
+                {...nameField.inputProps}
               />
-              {state.fieldErrors?.name ? (
-                <p className="mt-2 text-sm text-red-600">
-                  {state.fieldErrors.name[0]}
-                </p>
-              ) : null}
+              <FieldError id={nameField.errorId} error={nameField.error} />
             </div>
 
             <div>
-              <Label htmlFor={`${fieldPrefix}-message`}>
+              <Label htmlFor={`${formId}-message`}>
                 {activeIntent.messageLabel}
               </Label>
               <Textarea
-                id={`${fieldPrefix}-message`}
+                id={`${formId}-message`}
                 name="message"
                 placeholder={activeIntent.messagePlaceholder}
                 className="min-h-24"
+                {...messageField.inputProps}
               />
+              <FieldError id={messageField.errorId} error={messageField.error} />
             </div>
 
             {state.message ? (
@@ -301,6 +338,7 @@ export function VehicleEnquiryForm({
                   "text-sm",
                   state.success ? "text-emerald-700" : "text-red-600",
                 )}
+                role={state.success ? undefined : "alert"}
               >
                 {state.message}
               </p>

@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { AdminUnavailableState } from "@/components/admin/admin-unavailable-state";
 import { LeadTable } from "@/components/admin/lead-table";
 import { Button } from "@/components/ui/button";
+import { isRepositoryUnavailableError } from "@/lib/data/errors";
 import { getLeadInbox } from "@/lib/data/repository";
 import type { LeadInboxFilter } from "@/types/dealership";
 
@@ -25,8 +27,27 @@ export default async function AdminLeadsPage({
     filters.includes(params.filter as LeadInboxFilter)
       ? (params.filter as LeadInboxFilter)
       : "all";
+  let items: Awaited<ReturnType<typeof getLeadInbox>> = [];
+  let unavailableDescription: string | null = null;
 
-  const items = await getLeadInbox(activeFilter);
+  try {
+    items = await getLeadInbox(activeFilter);
+  } catch (error) {
+    if (isRepositoryUnavailableError(error)) {
+      unavailableDescription = error.message;
+    } else {
+      throw error;
+    }
+  }
+
+  if (unavailableDescription) {
+    return (
+      <AdminUnavailableState
+        title="Lead inbox is unavailable"
+        description={unavailableDescription}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

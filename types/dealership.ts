@@ -214,6 +214,7 @@ export interface ActionState {
   success: boolean;
   message: string;
   fieldErrors?: Record<string, string[]>;
+  redirectTo?: string;
 }
 
 export interface AdminSession {
@@ -229,10 +230,8 @@ export interface VehicleImageInput {
   cloudinaryPublicId?: string | null;
   sortOrder: number;
   isHero: boolean;
-  uploadState?: "uploaded" | "pending_file" | "pending_url";
+  uploadState?: "uploaded" | "pending_url";
   sourceUrl?: string | null;
-  pendingFileId?: string | null;
-  pendingFileOrder?: number | null;
 }
 
 export interface VehicleFormInput {

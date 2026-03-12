@@ -84,7 +84,7 @@ describe("mapVehicleFormData", () => {
     expect(() => mapVehicleFormData(formData)).toThrowError(/valid image url/i);
   });
 
-  it("rejects staged files that are missing file metadata", () => {
+  it("rejects pending file images at the server boundary", () => {
     const formData = buildVehicleFormData();
     formData.set(
       "imagesJson",
@@ -98,7 +98,20 @@ describe("mapVehicleFormData", () => {
       ]),
     );
 
-    expect(() => mapVehicleFormData(formData)).toThrowError(/staged files/i);
+    expect(() => mapVehicleFormData(formData)).toThrowError(
+      /staged files must be uploaded before saving/i,
+    );
+  });
+
+  it("uses resolved identifiers when they are provided by the client upload flow", () => {
+    const formData = buildVehicleFormData();
+    formData.set("resolvedStockCode", "KDL-777");
+    formData.set("resolvedSlug", "2020-toyota-prado-signature");
+
+    const result = mapVehicleFormData(formData);
+
+    expect(result.stockCode).toBe("KDL-777");
+    expect(result.slug).toBe("2020-toyota-prado-signature");
   });
 
   it("does not surface a stock-code error when the source fields are invalid", () => {

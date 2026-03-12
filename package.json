@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "test": "vitest run",
+    "test:e2e": "npm run build && playwright test",
     "test:watch": "vitest",
     "cloudinary:sync": "node --env-file=.env.local ./scripts/sync-cloudinary-vehicle-images.mjs",
     "supabase:check": "node --env-file=.env.local ./scripts/check-supabase-connection.mjs",
@@ -30,10 +31,12 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.2",
     "resend": "^6.9.3",
+    "server-only": "^0.0.1",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",

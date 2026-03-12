@@ -1,22 +1,85 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { siteConfig } from "@/lib/config/site";
-import { allowDemoAdmin, hasSupabaseConfig } from "@/lib/env";
+import { allowDemoAdmin, env, hasSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AdminSession } from "@/types/dealership";
 
 const DEMO_ADMIN_COOKIE = "demo-admin-session";
+const DEMO_ADMIN_SESSION_TTL_SECONDS = 60 * 60 * 8;
 
-function getDemoSessionValue(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+type DemoAdminCookiePayload = {
+  email: string;
+  exp: number;
+  mode: "demo";
+};
+
+function createDemoSessionSignature(payload: string) {
+  return createHmac("sha256", env.demoAdminSessionSecret)
+    .update(payload)
+    .digest("base64url");
+}
+
+function serializeDemoSession(payload: DemoAdminCookiePayload) {
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = createDemoSessionSignature(encodedPayload);
+  return `${encodedPayload}.${signature}`;
+}
+
+function safeEqual(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function readDemoSessionPayload(cookieValue: string): DemoAdminCookiePayload | null {
   if (!allowDemoAdmin) {
     return null;
   }
 
-  return cookieStore.get(DEMO_ADMIN_COOKIE)?.value === "1"
+  const [encodedPayload, signature] = cookieValue.split(".");
+  if (!encodedPayload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = createDemoSessionSignature(encodedPayload);
+  if (!safeEqual(signature, expectedSignature)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(encodedPayload, "base64url").toString("utf8"),
+    ) as DemoAdminCookiePayload;
+
+    if (
+      parsed.mode !== "demo" ||
+      parsed.email !== env.demoAdminEmail ||
+      parsed.exp <= Date.now()
+    ) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function getDemoSessionValue(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  const cookieValue = cookieStore.get(DEMO_ADMIN_COOKIE)?.value;
+  const payload = cookieValue ? readDemoSessionPayload(cookieValue) : null;
+
+  return payload
     ? {
         mode: "demo" as const,
-        email: siteConfig.demoAdmin.email,
+        email: payload.email,
         name: "Demo Admin",
       }
     : null;
@@ -87,22 +150,31 @@ export async function signInDemoAdmin(email: string, password: string) {
   }
 
   if (
-    email === siteConfig.demoAdmin.email &&
-    password === siteConfig.demoAdmin.password
+    email === env.demoAdminEmail &&
+    password === env.demoAdminPassword
   ) {
-    cookieStore.set(DEMO_ADMIN_COOKIE, "1", {
+    cookieStore.set(
+      DEMO_ADMIN_COOKIE,
+      serializeDemoSession({
+        email,
+        exp: Date.now() + DEMO_ADMIN_SESSION_TTL_SECONDS * 1000,
+        mode: "demo",
+      }),
+      {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 8,
-    });
+      maxAge: DEMO_ADMIN_SESSION_TTL_SECONDS,
+      secure: env.siteUrl.startsWith("https://"),
+    },
+    );
 
     return { success: true as const };
   }
 
   return {
     success: false as const,
-    message: "Use the documented demo admin credentials.",
+    message: "Use the configured local demo admin credentials.",
   };
 }
 

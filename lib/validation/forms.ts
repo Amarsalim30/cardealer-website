@@ -36,7 +36,7 @@ export const testDriveFormSchema = z.object({
   name: z.string().trim().min(2, "Enter your name."),
   phone: z.string().trim().min(7, "Enter a valid phone number."),
   email: optionalEmail,
-  preferredDate: z.string().trim().optional(),
+  preferredDate: z.string().trim().min(1, "Select your preferred date."),
   preferredTime: z.string().trim().optional(),
   message: z
     .string()

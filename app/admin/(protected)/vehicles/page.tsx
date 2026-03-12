@@ -1,14 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import {
-  deleteVehicleAction,
-  setVehicleStatusAction,
-  toggleVehicleFeaturedAction,
-} from "@/lib/actions/admin-actions";
+import { AdminUnavailableState } from "@/components/admin/admin-unavailable-state";
+import { VehicleRowActions } from "@/components/admin/vehicle-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { isRepositoryUnavailableError } from "@/lib/data/errors";
 import { getAdminVehicles } from "@/lib/data/repository";
 import {
   formatCurrency,
@@ -30,7 +28,27 @@ function getStatusVariant(status: "draft" | "published" | "sold" | "unpublished"
 }
 
 export default async function AdminVehiclesPage() {
-  const vehicles = await getAdminVehicles();
+  let vehicles: Awaited<ReturnType<typeof getAdminVehicles>> = [];
+  let unavailableDescription: string | null = null;
+
+  try {
+    vehicles = await getAdminVehicles();
+  } catch (error) {
+    if (isRepositoryUnavailableError(error)) {
+      unavailableDescription = error.message;
+    } else {
+      throw error;
+    }
+  }
+
+  if (unavailableDescription) {
+    return (
+      <AdminUnavailableState
+        title="Vehicle inventory is unavailable"
+        description={unavailableDescription}
+      />
+    );
+  }
 
   return (
     <Card className="overflow-hidden rounded-[28px]">
@@ -106,52 +124,17 @@ export default async function AdminVehiclesPage() {
                   </Badge>
                 </div>
 
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <Button asChild size="sm">
-                    <Link href={`/admin/vehicles/${vehicle.id}`}>Edit</Link>
-                  </Button>
-
-                  <form action={toggleVehicleFeaturedAction}>
-                    <input type="hidden" name="id" value={vehicle.id} />
-                    <Button size="sm" variant="ghost">
-                      {vehicle.featured ? "Unfeature" : "Feature"}
+                <div className="space-y-2 lg:justify-self-end">
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <Button asChild size="sm">
+                      <Link href={`/admin/vehicles/${vehicle.id}`}>Edit</Link>
                     </Button>
-                  </form>
-
-                  {vehicle.status !== "published" ? (
-                    <form action={setVehicleStatusAction}>
-                      <input type="hidden" name="id" value={vehicle.id} />
-                      <input type="hidden" name="status" value="published" />
-                      <Button size="sm" variant="secondary">
-                        Publish
-                      </Button>
-                    </form>
-                  ) : (
-                    <form action={setVehicleStatusAction}>
-                      <input type="hidden" name="id" value={vehicle.id} />
-                      <input type="hidden" name="status" value="unpublished" />
-                      <Button size="sm" variant="secondary">
-                        Unpublish
-                      </Button>
-                    </form>
-                  )}
-
-                  {vehicle.status !== "sold" ? (
-                    <form action={setVehicleStatusAction}>
-                      <input type="hidden" name="id" value={vehicle.id} />
-                      <input type="hidden" name="status" value="sold" />
-                      <Button size="sm" variant="ghost">
-                        Mark sold
-                      </Button>
-                    </form>
-                  ) : null}
-
-                  <form action={deleteVehicleAction}>
-                    <input type="hidden" name="id" value={vehicle.id} />
-                    <Button size="sm" variant="ghost">
-                      Delete
-                    </Button>
-                  </form>
+                  </div>
+                  <VehicleRowActions
+                    vehicleId={vehicle.id}
+                    featured={vehicle.featured}
+                    status={vehicle.status}
+                  />
                 </div>
               </div>
             );

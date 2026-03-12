@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 
+import { AdminUnavailableState } from "@/components/admin/admin-unavailable-state";
 import { CloudinarySyncCard } from "@/components/admin/cloudinary-sync-card";
 import { VehicleForm } from "@/components/admin/vehicle-form";
-import { getLocations, getVehicleById } from "@/lib/data/repository";
+import { isRepositoryUnavailableError } from "@/lib/data/errors";
+import { getAdminLocations, getVehicleById } from "@/lib/data/repository";
 
 export default async function AdminEditVehiclePage({
   params,
@@ -10,10 +12,31 @@ export default async function AdminEditVehiclePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [locations, vehicle] = await Promise.all([
-    getLocations(),
-    getVehicleById(id),
-  ]);
+  let locations: Awaited<ReturnType<typeof getAdminLocations>> = [];
+  let vehicle: Awaited<ReturnType<typeof getVehicleById>> = null;
+  let unavailableDescription: string | null = null;
+
+  try {
+    [locations, vehicle] = await Promise.all([
+      getAdminLocations(),
+      getVehicleById(id),
+    ]);
+  } catch (error) {
+    if (isRepositoryUnavailableError(error)) {
+      unavailableDescription = error.message;
+    } else {
+      throw error;
+    }
+  }
+
+  if (unavailableDescription) {
+    return (
+      <AdminUnavailableState
+        title="Vehicle editor is unavailable"
+        description={unavailableDescription}
+      />
+    );
+  }
 
   if (!vehicle) {
     notFound();

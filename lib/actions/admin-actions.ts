@@ -8,10 +8,9 @@ import { allowDemoAdmin, hasCloudinaryConfig, hasSupabaseConfig } from "@/lib/en
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   deleteCloudinaryAssets,
-  uploadVehicleImage,
   uploadVehicleImageFromUrl,
 } from "@/lib/cloudinary";
-import { mapVehicleFormData } from "@/lib/vehicle-form";
+import { isRepositoryUnavailableError } from "@/lib/data/errors";
 import { resolveVehicleIdentifiers } from "@/lib/data/filters";
 import {
   deleteVehicle,
@@ -22,6 +21,7 @@ import {
   toggleVehicleFeatured,
   updateVehicleStatus,
 } from "@/lib/data/repository";
+import { mapVehicleFormData } from "@/lib/vehicle-form";
 import type { ActionState, VehicleFormInput } from "@/types/dealership";
 
 function validationErrorState(error: {
@@ -34,7 +34,40 @@ function validationErrorState(error: {
   };
 }
 
+function actionFailure(message: string, fieldErrors?: Record<string, string[]>) {
+  return {
+    success: false,
+    message,
+    ...(fieldErrors ? { fieldErrors } : {}),
+  } satisfies ActionState;
+}
+
+function actionSuccess(message: string, redirectTo?: string) {
+  return {
+    success: true,
+    message,
+    ...(redirectTo ? { redirectTo } : {}),
+  } satisfies ActionState;
+}
+
 class VehicleSaveActionError extends Error {}
+
+function parseNewUploadPublicIds(formData: FormData) {
+  const raw = String(formData.get("newUploadPublicIdsJson") || "[]");
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed)
+      ? [
+          ...new Set(
+            parsed.filter((value): value is string => typeof value === "string"),
+          ),
+        ]
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 async function cleanupUploadedVehicleImages(publicIds: string[]) {
   if (!publicIds.length) {
@@ -53,9 +86,8 @@ async function cleanupUploadedVehicleImages(publicIds: string[]) {
 
 async function finalizeVehicleImages(
   input: VehicleFormInput,
-  pendingFiles: File[],
   uploadedPublicIds: string[],
-  options: { canUploadToCloudinary: boolean; sessionMode: "demo" | "supabase" },
+  options: { canUploadToCloudinary: boolean },
 ) {
   const finalizedImages: VehicleFormInput["images"] = [];
 
@@ -74,8 +106,6 @@ async function finalizeVehicleImages(
           cloudinaryPublicId: null,
           uploadState: "uploaded",
           sourceUrl: null,
-          pendingFileId: null,
-          pendingFileOrder: null,
         });
         continue;
       }
@@ -92,59 +122,6 @@ async function finalizeVehicleImages(
           cloudinaryPublicId: uploaded.publicId,
           uploadState: "uploaded",
           sourceUrl: null,
-          pendingFileId: null,
-          pendingFileOrder: null,
-        });
-      } catch (error) {
-        throw new VehicleSaveActionError(
-          error instanceof Error ? error.message : "Image upload failed.",
-        );
-      }
-
-      continue;
-    }
-
-    if (image.uploadState === "pending_file") {
-      if (options.sessionMode === "demo") {
-        throw new VehicleSaveActionError(
-          "File uploads are unavailable in demo mode. Use image URLs instead.",
-        );
-      }
-
-      if (!hasCloudinaryConfig) {
-        throw new VehicleSaveActionError(
-          "Cloudinary is not configured for file uploads. Add image URLs instead.",
-        );
-      }
-
-      if (!image.pendingFileId || typeof image.pendingFileOrder !== "number") {
-        throw new VehicleSaveActionError(
-          "One staged file is incomplete. Add it again and save.",
-        );
-      }
-
-      const file = pendingFiles[image.pendingFileOrder];
-
-      if (!file) {
-        throw new VehicleSaveActionError(
-          "One of the staged files is missing. Add it again and save.",
-        );
-      }
-
-      try {
-        const uploaded = await uploadVehicleImage(file, {
-          stockCode: input.stockCode,
-        });
-
-        uploadedPublicIds.push(uploaded.publicId);
-        finalizedImages.push({
-          ...image,
-          imageUrl: uploaded.secureUrl,
-          cloudinaryPublicId: uploaded.publicId,
-          uploadState: "uploaded",
-          sourceUrl: null,
-          pendingFileId: null,
-          pendingFileOrder: null,
         });
       } catch (error) {
         throw new VehicleSaveActionError(
@@ -165,8 +142,6 @@ async function finalizeVehicleImages(
       ...image,
       uploadState: "uploaded",
       sourceUrl: null,
-      pendingFileId: null,
-      pendingFileOrder: null,
     });
   }
 
@@ -188,6 +163,11 @@ function revalidateVehiclePaths(slug?: string) {
   }
 }
 
+export async function cleanupUploadedVehicleImagesAction(publicIds: string[]) {
+  await requireAdminSession();
+  await cleanupUploadedVehicleImages(publicIds);
+}
+
 export async function loginAdminAction(
   _prevState: ActionState,
   formData: FormData,
@@ -196,10 +176,7 @@ export async function loginAdminAction(
   const password = String(formData.get("password") || "").trim();
 
   if (!email || !password) {
-    return {
-      success: false,
-      message: "Enter both email and password.",
-    };
+    return actionFailure("Enter both email and password.");
   }
 
   if (allowDemoAdmin) {
@@ -211,25 +188,22 @@ export async function loginAdminAction(
   }
 
   if (!hasSupabaseConfig) {
-    return {
-      success: false,
-      message: allowDemoAdmin
-        ? "Use the documented demo admin credentials."
+    return actionFailure(
+      allowDemoAdmin
+        ? "Local demo admin is enabled. Sign in with the configured local demo credentials."
         : "Supabase auth is not configured.",
-    };
+    );
   }
 
   const supabase = await createSupabaseServerClient();
-
   const { error } = await supabase!.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return {
-      success: false,
-      message: allowDemoAdmin
-        ? "Login failed. Use the local demo admin credentials or finish Supabase admin setup."
+    return actionFailure(
+      allowDemoAdmin
+        ? "Login failed. Use the configured local demo credentials or finish Supabase admin setup."
         : "Login failed. Check the credentials and try again.",
-    };
+    );
   }
 
   const {
@@ -245,12 +219,11 @@ export async function loginAdminAction(
   if (profileError || !profile) {
     await supabase!.auth.signOut();
 
-    return {
-      success: false,
-      message: profileError
+    return actionFailure(
+      profileError
         ? "Supabase admin access is not ready yet. Use the local demo admin or complete the admin_profiles setup."
         : "This account does not have admin access.",
-    };
+    );
   }
 
   redirect("/admin/vehicles");
@@ -266,13 +239,13 @@ export async function saveVehicleAction(
   formData: FormData,
 ): Promise<ActionState> {
   const session = await requireAdminSession();
-  const uploadedPublicIds: string[] = [];
+  const uploadedPublicIds = parseNewUploadPublicIds(formData);
   let vehicle: Awaited<ReturnType<typeof saveVehicle>>;
 
   try {
     const input = mapVehicleFormData(formData);
     const adminVehicles = await getAdminVehicles();
-    const currentVehicle = adminVehicles.find((vehicle) => vehicle.id === input.id);
+    const currentVehicle = adminVehicles.find((item) => item.id === input.id);
     const resolvedIdentifiers = resolveVehicleIdentifiers(
       {
         ...input,
@@ -281,27 +254,22 @@ export async function saveVehicleAction(
       },
       adminVehicles,
     );
-    const pendingFiles = formData.getAll("pendingFiles").filter(
-      (entry): entry is File => entry instanceof File,
-    );
     const inputWithResolvedIdentifiers = {
       ...input,
       ...resolvedIdentifiers,
     };
     const finalized = await finalizeVehicleImages(
       inputWithResolvedIdentifiers,
-      pendingFiles,
       uploadedPublicIds,
       {
-        canUploadToCloudinary: session.mode !== "demo" && hasCloudinaryConfig,
-        sessionMode: session.mode,
+        canUploadToCloudinary: hasCloudinaryConfig,
       },
     );
-
     const inputWithUploadedImages = {
       ...inputWithResolvedIdentifiers,
       images: finalized.finalizedImages,
     };
+
     vehicle = await saveVehicle(inputWithUploadedImages, {
       forceDemo: session.mode === "demo",
     });
@@ -315,61 +283,102 @@ export async function saveVehicleAction(
     }
 
     if (error instanceof VehicleSaveActionError) {
-      return {
-        success: false,
-        message: error.message,
-      };
+      return actionFailure(error.message);
     }
 
-    return {
-      success: false,
-      message: "We could not save the vehicle right now.",
-    };
+    if (isRepositoryUnavailableError(error)) {
+      return actionFailure(error.message);
+    }
+
+    return actionFailure("We could not save the vehicle right now.");
   }
 
   revalidateVehiclePaths(vehicle.slug);
   revalidatePath("/admin/vehicles");
-  redirect("/admin/vehicles");
+  return actionSuccess("Vehicle saved successfully.", "/admin/vehicles");
 }
 
-export async function setVehicleStatusAction(formData: FormData) {
-  const session = await requireAdminSession();
+export async function setVehicleStatusAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireAdminSession();
+    const id = String(formData.get("id") || "");
+    const status = String(formData.get("status") || "") as
+      | "draft"
+      | "published"
+      | "sold"
+      | "unpublished";
 
-  const id = String(formData.get("id") || "");
-  const status = String(formData.get("status") || "") as
-    | "draft"
-    | "published"
-    | "sold"
-    | "unpublished";
+    if (!id || !status) {
+      return actionFailure("Select a vehicle and status before trying again.");
+    }
 
-  const vehicle = await updateVehicleStatus(id, status, {
-    forceDemo: session.mode === "demo",
-  });
-  revalidateVehiclePaths(vehicle?.slug);
-  revalidatePath("/admin/vehicles");
+    const vehicle = await updateVehicleStatus(id, status, {
+      forceDemo: session.mode === "demo",
+    });
+    revalidateVehiclePaths(vehicle?.slug);
+    revalidatePath("/admin/vehicles");
+    return actionSuccess("Vehicle status updated.");
+  } catch (error) {
+    return actionFailure(
+      error instanceof Error ? error.message : "Vehicle status could not be updated.",
+    );
+  }
 }
 
-export async function toggleVehicleFeaturedAction(formData: FormData) {
-  const session = await requireAdminSession();
+export async function toggleVehicleFeaturedAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireAdminSession();
+    const id = String(formData.get("id") || "");
 
-  const id = String(formData.get("id") || "");
-  const vehicle = await toggleVehicleFeatured(id, {
-    forceDemo: session.mode === "demo",
-  });
-  revalidateVehiclePaths(vehicle?.slug);
-  revalidatePath("/admin/vehicles");
+    if (!id) {
+      return actionFailure("Vehicle id is required.");
+    }
+
+    const vehicle = await toggleVehicleFeatured(id, {
+      forceDemo: session.mode === "demo",
+    });
+    revalidateVehiclePaths(vehicle?.slug);
+    revalidatePath("/admin/vehicles");
+    return actionSuccess("Vehicle featured state updated.");
+  } catch (error) {
+    return actionFailure(
+      error instanceof Error
+        ? error.message
+        : "Vehicle featured state could not be updated.",
+    );
+  }
 }
 
-export async function deleteVehicleAction(formData: FormData) {
-  const session = await requireAdminSession();
+export async function deleteVehicleAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireAdminSession();
+    const id = String(formData.get("id") || "");
 
-  const id = String(formData.get("id") || "");
-  const vehicle = await getVehicleById(id);
-  await deleteVehicle(id, {
-    forceDemo: session.mode === "demo",
-  });
-  revalidateVehiclePaths(vehicle?.slug);
-  revalidatePath("/admin/vehicles");
+    if (!id) {
+      return actionFailure("Vehicle id is required.");
+    }
+
+    const vehicle = await getVehicleById(id);
+    await deleteVehicle(id, {
+      forceDemo: session.mode === "demo",
+    });
+    revalidateVehiclePaths(vehicle?.slug);
+    revalidatePath("/admin/vehicles");
+    return actionSuccess("Vehicle deleted.");
+  } catch (error) {
+    return actionFailure(
+      error instanceof Error ? error.message : "Vehicle deletion failed.",
+    );
+  }
 }
 
 export async function syncVehicleImagesAction(
@@ -380,10 +389,7 @@ export async function syncVehicleImagesAction(
   const id = String(formData.get("id") || "");
 
   if (!id) {
-    return {
-      success: false,
-      message: "Vehicle id is required for image sync.",
-    };
+    return actionFailure("Vehicle id is required for image sync.");
   }
 
   try {
@@ -395,17 +401,12 @@ export async function syncVehicleImagesAction(
     revalidatePath("/admin/vehicles");
     revalidatePath(`/admin/vehicles/${id}`);
 
-    return {
-      success: true,
-      message: `Synced ${result.syncedCount} image(s) from Cloudinary folder "${result.assetFolder}".`,
-    };
+    return actionSuccess(
+      `Synced ${result.syncedCount} image(s) from Cloudinary folder "${result.assetFolder}".`,
+    );
   } catch (error) {
-    return {
-      success: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Cloudinary folder sync failed.",
-    };
+    return actionFailure(
+      error instanceof Error ? error.message : "Cloudinary folder sync failed.",
+    );
   }
 }

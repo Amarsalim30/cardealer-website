@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 
 import { submitTestDriveAction } from "@/lib/actions/public-actions";
+import { getActionFieldState } from "@/components/forms/action-form-field-helpers";
 import { Card } from "@/components/ui/card";
+import { FieldError } from "@/components/ui/field-error";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -22,6 +24,13 @@ export function TestDriveForm({
   source: string;
 }) {
   const [state, formAction] = useActionState(submitTestDriveAction, initialState);
+  const formId = "test-drive";
+  const nameField = getActionFieldState(state, formId, "name");
+  const phoneField = getActionFieldState(state, formId, "phone");
+  const emailField = getActionFieldState(state, formId, "email");
+  const preferredDateField = getActionFieldState(state, formId, "preferredDate");
+  const preferredTimeField = getActionFieldState(state, formId, "preferredTime");
+  const messageField = getActionFieldState(state, formId, "message");
 
   return (
     <Card className="rounded-[24px] p-6">
@@ -41,11 +50,25 @@ export function TestDriveForm({
 
         <div>
           <Label htmlFor="test-drive-name">Full name</Label>
-          <Input id="test-drive-name" name="name" placeholder="Your full name" />
+          <Input
+            id="test-drive-name"
+            name="name"
+            placeholder="Your full name"
+            required
+            {...nameField.inputProps}
+          />
+          <FieldError id={nameField.errorId} error={nameField.error} />
         </div>
         <div>
           <Label htmlFor="test-drive-phone">Phone</Label>
-          <Input id="test-drive-phone" name="phone" placeholder="+254..." />
+          <Input
+            id="test-drive-phone"
+            name="phone"
+            placeholder="+254..."
+            required
+            {...phoneField.inputProps}
+          />
+          <FieldError id={phoneField.errorId} error={phoneField.error} />
         </div>
         <div>
           <Label htmlFor="test-drive-email">Email</Label>
@@ -54,16 +77,37 @@ export function TestDriveForm({
             name="email"
             type="email"
             placeholder="Optional email address"
+            {...emailField.inputProps}
           />
+          <FieldError id={emailField.errorId} error={emailField.error} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label htmlFor="preferred-date">Preferred date</Label>
-            <Input id="preferred-date" name="preferredDate" type="date" />
+            <Input
+              id="preferred-date"
+              name="preferredDate"
+              type="date"
+              required
+              {...preferredDateField.inputProps}
+            />
+            <FieldError
+              id={preferredDateField.errorId}
+              error={preferredDateField.error}
+            />
           </div>
           <div>
             <Label htmlFor="preferred-time">Preferred time</Label>
-            <Input id="preferred-time" name="preferredTime" placeholder="11:00 AM" />
+            <Input
+              id="preferred-time"
+              name="preferredTime"
+              placeholder="11:00 AM"
+              {...preferredTimeField.inputProps}
+            />
+            <FieldError
+              id={preferredTimeField.errorId}
+              error={preferredTimeField.error}
+            />
           </div>
         </div>
         <div>
@@ -72,7 +116,9 @@ export function TestDriveForm({
             id="test-drive-message"
             name="message"
             placeholder="Any timing or location notes?"
+            {...messageField.inputProps}
           />
+          <FieldError id={messageField.errorId} error={messageField.error} />
         </div>
 
         {state.message ? (
@@ -80,6 +126,7 @@ export function TestDriveForm({
             className={`text-sm ${
               state.success ? "text-emerald-700" : "text-red-600"
             }`}
+            role={state.success ? undefined : "alert"}
           >
             {state.message}
           </p>

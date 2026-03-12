@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => {
       hasCloudinaryConfig: true,
     },
     requireAdminSession: vi.fn(),
-    uploadVehicleImage: vi.fn(),
     uploadVehicleImageFromUrl: vi.fn(),
     deleteCloudinaryAssets: vi.fn(),
     mapVehicleFormData: vi.fn(),
@@ -50,7 +49,6 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("@/lib/cloudinary", () => ({
   deleteCloudinaryAssets: mocks.deleteCloudinaryAssets,
-  uploadVehicleImage: mocks.uploadVehicleImage,
   uploadVehicleImageFromUrl: mocks.uploadVehicleImageFromUrl,
 }));
 
@@ -103,46 +101,33 @@ describe("saveVehicleAction", () => {
     vi.clearAllMocks();
     mocks.envState.hasCloudinaryConfig = true;
     mocks.getAdminVehicles.mockResolvedValue([]);
-  });
-
-  it("cleans up uploaded assets if a later staged file upload fails", async () => {
     mocks.requireAdminSession.mockResolvedValue({
       mode: "supabase",
       email: "admin@example.com",
       name: "Admin",
     });
+  });
+
+  it("cleans up newly uploaded client assets if URL import fails", async () => {
     mocks.mapVehicleFormData.mockReturnValue(
       buildVehicleInput({
         images: [
           {
-            imageUrl: "blob:first-preview",
+            imageUrl: "https://example.com/car.jpg",
+            sourceUrl: "https://example.com/car.jpg",
             sortOrder: 0,
             isHero: true,
-            uploadState: "pending_file",
-            pendingFileId: "file-1",
-            pendingFileOrder: 0,
-          },
-          {
-            imageUrl: "blob:second-preview",
-            sortOrder: 1,
-            isHero: false,
-            uploadState: "pending_file",
-            pendingFileId: "file-2",
-            pendingFileOrder: 1,
+            uploadState: "pending_url",
           },
         ],
       }),
     );
-    mocks.uploadVehicleImage
-      .mockResolvedValueOnce({
-        secureUrl: "https://cdn.example.com/first.jpg",
-        publicId: "cloudinary-first",
-      })
-      .mockRejectedValueOnce(new Error("Second upload failed."));
+    mocks.uploadVehicleImageFromUrl.mockRejectedValue(
+      new Error("Cloudinary import failed."),
+    );
 
     const formData = new FormData();
-    formData.append("pendingFiles", new File(["first"], "first.jpg"));
-    formData.append("pendingFiles", new File(["second"], "second.jpg"));
+    formData.set("newUploadPublicIdsJson", JSON.stringify(["client-upload-1"]));
 
     const result = await saveVehicleAction(
       { success: false, message: "" },
@@ -151,55 +136,52 @@ describe("saveVehicleAction", () => {
 
     expect(result).toEqual({
       success: false,
-      message: "Second upload failed.",
+      message: "Cloudinary import failed.",
     });
     expect(mocks.deleteCloudinaryAssets).toHaveBeenCalledWith([
-      "cloudinary-first",
+      "client-upload-1",
     ]);
     expect(mocks.saveVehicle).not.toHaveBeenCalled();
   });
 
-  it("blocks staged file uploads in demo mode before any Cloudinary call", async () => {
-    mocks.requireAdminSession.mockResolvedValue({
-      mode: "demo",
-      email: "demo@example.com",
-      name: "Demo Admin",
-    });
+  it("cleans up newly uploaded client assets if metadata save fails", async () => {
     mocks.mapVehicleFormData.mockReturnValue(
       buildVehicleInput({
         images: [
           {
-            imageUrl: "blob:demo-preview",
+            imageUrl: "https://cdn.example.com/already-uploaded.jpg",
+            cloudinaryPublicId: "cloudinary-direct-upload",
             sortOrder: 0,
             isHero: true,
-            uploadState: "pending_file",
-            pendingFileId: "file-1",
-            pendingFileOrder: 0,
+            uploadState: "uploaded",
           },
         ],
       }),
     );
+    mocks.saveVehicle.mockRejectedValue(new Error("Vehicle save failed."));
+
+    const formData = new FormData();
+    formData.set(
+      "newUploadPublicIdsJson",
+      JSON.stringify(["cloudinary-direct-upload"]),
+    );
 
     const result = await saveVehicleAction(
       { success: false, message: "" },
-      new FormData(),
+      formData,
     );
 
     expect(result).toEqual({
       success: false,
-      message: "File uploads are unavailable in demo mode. Use image URLs instead.",
+      message: "We could not save the vehicle right now.",
     });
-    expect(mocks.uploadVehicleImage).not.toHaveBeenCalled();
-    expect(mocks.saveVehicle).not.toHaveBeenCalled();
+    expect(mocks.deleteCloudinaryAssets).toHaveBeenCalledWith([
+      "cloudinary-direct-upload",
+    ]);
   });
 
   it("saves staged image URLs directly when Cloudinary is unavailable", async () => {
     mocks.envState.hasCloudinaryConfig = false;
-    mocks.requireAdminSession.mockResolvedValue({
-      mode: "supabase",
-      email: "admin@example.com",
-      name: "Admin",
-    });
     mocks.mapVehicleFormData.mockReturnValue(
       buildVehicleInput({
         images: [
@@ -217,8 +199,16 @@ describe("saveVehicleAction", () => {
       slug: "2020-toyota-prado",
     });
 
-    await saveVehicleAction({ success: false, message: "" }, new FormData());
+    const result = await saveVehicleAction(
+      { success: false, message: "" },
+      new FormData(),
+    );
 
+    expect(result).toEqual({
+      success: true,
+      message: "Vehicle saved successfully.",
+      redirectTo: "/admin/vehicles",
+    });
     expect(mocks.uploadVehicleImageFromUrl).not.toHaveBeenCalled();
     expect(mocks.saveVehicle).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -234,12 +224,7 @@ describe("saveVehicleAction", () => {
     );
   });
 
-  it("derives unique stock codes and slugs before uploading and saving", async () => {
-    mocks.requireAdminSession.mockResolvedValue({
-      mode: "supabase",
-      email: "admin@example.com",
-      name: "Admin",
-    });
+  it("derives unique stock codes and slugs before importing and saving", async () => {
     mocks.getAdminVehicles.mockResolvedValue([
       {
         id: "existing-vehicle",
@@ -288,11 +273,6 @@ describe("saveVehicleAction", () => {
   });
 
   it("keeps the current stock code and slug when editing an existing vehicle", async () => {
-    mocks.requireAdminSession.mockResolvedValue({
-      mode: "supabase",
-      email: "admin@example.com",
-      name: "Admin",
-    });
     mocks.getAdminVehicles.mockResolvedValue([
       {
         id: "vehicle-1",
