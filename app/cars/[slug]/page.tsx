@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Phone } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/layout/json-ld";
@@ -143,6 +143,7 @@ export default async function VehicleDetailPage({
   const photoCount = vehicle.images.length || (vehicle.heroImageUrl ? 1 : 0);
   const quickFacts = buildQuickFacts(vehicle);
   const buyerSummary = buildBuyerSummary(vehicle, photoCount);
+  const buyerHighlights = buyerSummary.slice(0, 4);
   const detailBadges = buildDetailBadges(vehicle);
   const baseVehiclePath = `/cars/${vehicle.slug}`;
 
@@ -162,7 +163,7 @@ export default async function VehicleDetailPage({
               />
             </div>
 
-            <div className="min-w-0 space-y-6">
+            <div className="min-w-0 space-y-6 lg:sticky lg:top-28 lg:self-start">
               <div className="flex flex-wrap gap-2">
                 {detailBadges.map((badge) => (
                   <Badge key={badge.label} variant={badge.variant}>
@@ -236,90 +237,96 @@ export default async function VehicleDetailPage({
                     </Link>
                   </Button>
                 </div>
+                <div className="mt-6 border-t border-stone-200/80 pt-6">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
+                    Before you enquire
+                  </p>
+                  <ul className="mt-3 space-y-2.5 text-sm leading-7 text-stone-600">
+                    {buyerHighlights.map((item) => (
+                      <li key={item} className="flex items-start gap-3">
+                        <span className="mt-2 inline-flex size-2 shrink-0 rounded-full bg-primary/70" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </Card>
-
-              <div className="rounded-[28px] border border-border bg-white/70 p-6 text-sm leading-7 text-stone-600">
-                <p className="font-semibold text-stone-900">Buyer summary</p>
-                <ul className="mt-4 space-y-2">
-                  {buyerSummary.map((item) => (
-                    <li key={item} className="flex items-start gap-3">
-                      <span className="mt-2 inline-flex size-2 shrink-0 rounded-full bg-primary/70" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
             </div>
           </div>
 
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <div className="min-w-0 space-y-10">
-              <Card className="rounded-[28px] p-8">
-                <h2 className="text-2xl font-semibold text-stone-950">
-                  Core specifications
-                </h2>
-                <div className="mt-6">
-                  <SpecGrid vehicle={vehicle} />
-                </div>
-              </Card>
-
-              <Card className="rounded-[28px] p-8">
-                <h2 className="text-2xl font-semibold text-stone-950">
-                  Vehicle overview
-                </h2>
-                <div className="mt-5 space-y-4 text-sm leading-8 text-stone-600">
-                  <p>{vehicle.description}</p>
-                  <p>
-                    Use the action buttons on this page to confirm live
-                    availability, ask for a walk-around video, or book a viewing
-                    slot before you travel.
+          <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+            <Card className="rounded-[28px] p-8 lg:p-10">
+              <div className="grid gap-10 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:gap-12">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
+                    Vehicle details
                   </p>
-                </div>
-              </Card>
-
-              {similarVehicles.length ? (
-                <div className="space-y-6">
-                  <h2 className="text-2xl font-semibold text-stone-950">
-                    Similar vehicles
+                  <h2 className="mt-3 text-2xl font-semibold text-stone-950">
+                    Core specifications
                   </h2>
-                  <div className="grid gap-8 lg:grid-cols-3">
-                    {similarVehicles.map((item) => (
-                      <VehicleCard key={item.id} vehicle={item} />
-                    ))}
+                  <div className="mt-6">
+                    <SpecGrid vehicle={vehicle} />
                   </div>
                 </div>
-              ) : null}
-            </div>
 
-            <div className="min-w-0 space-y-6">
+                <div className="min-w-0 border-t border-stone-200 pt-8 xl:border-l xl:border-t-0 xl:pl-10 xl:pt-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
+                    Overview
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold text-stone-950">
+                    What to expect
+                  </h2>
+                  <div className="mt-6 space-y-4 text-sm leading-8 text-stone-600">
+                    <p>{vehicle.description}</p>
+                    <p>
+                      Use the action buttons on this page to confirm live
+                      availability, ask for a walk-around video, or book a viewing
+                      slot before you travel.
+                    </p>
+                    <p className="pt-2 font-medium text-stone-700">
+                      Reference stock code {vehicle.stockCode} when you call or
+                      message so the team can move faster.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <div className="min-w-0 lg:sticky lg:top-28">
               <div id="contact-panel">
                 <VehicleEnquiryForm
                   vehicleId={vehicle.id}
                   vehicleTitle={vehicle.title}
                   source="Vehicle detail page"
+                  phoneHref={siteConfig.phoneHref}
+                  phoneDisplay={siteConfig.phoneDisplay}
+                  whatsappUrl={whatsappUrl}
                 />
               </div>
-              <Card className="rounded-[28px] p-6">
-                <h3 className="text-xl font-semibold text-stone-950">
-                  Speak to sales
-                </h3>
-                <div className="mt-5 space-y-3">
-                  <Button asChild className="w-full">
-                    <a href={siteConfig.phoneHref}>
-                      <Phone className="size-4" />
-                      Call {siteConfig.phoneDisplay}
-                    </a>
-                  </Button>
-                  <Button asChild variant="secondary" className="w-full">
-                    <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <WhatsAppIcon className="size-4" />
-                      WhatsApp Sales
-                    </a>
-                  </Button>
-                </div>
-              </Card>
             </div>
           </div>
+
+          {similarVehicles.length ? (
+            <div className="space-y-6">
+              <div className="max-w-[42rem] space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
+                  More options
+                </p>
+                <h2 className="text-2xl font-semibold text-stone-950">
+                  Similar vehicles
+                </h2>
+                <p className="text-sm leading-7 text-stone-600">
+                  Keep browsing comparable stock if this unit is close, but not
+                  quite the exact fit.
+                </p>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {similarVehicles.map((item) => (
+                  <VehicleCard key={item.id} vehicle={item} />
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 

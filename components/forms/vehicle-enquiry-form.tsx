@@ -1,5 +1,6 @@
 "use client";
 
+import { Phone } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -12,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
 import type { ActionState, LeadType } from "@/types/dealership";
 import { cn } from "@/lib/utils";
 
@@ -77,10 +80,16 @@ export function VehicleEnquiryForm({
   vehicleId,
   vehicleTitle,
   source,
+  phoneHref,
+  phoneDisplay,
+  whatsappUrl,
 }: {
   vehicleId?: string;
   vehicleTitle?: string;
   source: string;
+  phoneHref?: string;
+  phoneDisplay?: string;
+  whatsappUrl?: string;
 }) {
   const searchParams = useSearchParams();
   const [intent, setIntent] = useState<VehicleIntent>(() =>
@@ -101,7 +110,7 @@ export function VehicleEnquiryForm({
   const fieldPrefix = `vehicle-enquiry-${intent}`;
 
   return (
-    <Card className="rounded-[28px] p-6">
+    <Card className="rounded-[28px] p-6 lg:p-7">
       <div className="mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
           Quick enquiry
@@ -114,6 +123,27 @@ export function VehicleEnquiryForm({
           vehicle.
         </p>
       </div>
+
+      {phoneHref || whatsappUrl ? (
+        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+          {phoneHref && phoneDisplay ? (
+            <Button asChild variant="secondary" className="w-full">
+              <a href={phoneHref}>
+                <Phone className="size-4" />
+                Call {phoneDisplay}
+              </a>
+            </Button>
+          ) : null}
+          {whatsappUrl ? (
+            <Button asChild variant="dark" className="w-full">
+              <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                <WhatsAppIcon className="size-4" />
+                WhatsApp Sales
+              </a>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-2 sm:grid-cols-3">
         {(Object.entries(intentMeta) as Array<[VehicleIntent, (typeof intentMeta)[VehicleIntent]]>).map(
@@ -138,7 +168,7 @@ export function VehicleEnquiryForm({
         )}
       </div>
 
-      <div className="mt-6 rounded-[24px] border border-stone-200 bg-stone-50/70 p-5">
+      <div className="mt-6 border-t border-stone-200 pt-6">
         <h4 className="text-lg font-semibold text-stone-950">
           {activeIntent.title}
         </h4>
