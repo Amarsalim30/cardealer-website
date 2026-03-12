@@ -23,7 +23,7 @@ function SelectField({
       defaultValue={defaultValue || ""}
       className={`h-12 w-full appearance-none bg-transparent px-4 py-2 text-[0.85rem] font-medium text-stone-700 outline-none transition-colors hover:text-stone-900 focus:text-stone-900 ${className}`}
     >
-      <option value="" disabled className="text-stone-400 font-normal">
+      <option value="" className="text-stone-400 font-normal">
         {placeholder}
       </option>
       {options.map((option) => (

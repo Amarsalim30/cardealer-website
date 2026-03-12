@@ -2,22 +2,30 @@ import { describe, expect, it } from "vitest";
 
 import { mapVehicleFormData } from "@/lib/vehicle-form";
 
+function buildVehicleFormData() {
+  const formData = new FormData();
+  formData.set("title", "2020 Toyota Prado");
+  formData.set("stockCode", "kdl 001");
+  formData.set("make", "Toyota");
+  formData.set("model", "Prado");
+  formData.set("year", "2020");
+  formData.set("condition", "Foreign used");
+  formData.set("price", "6500000");
+  formData.set("mileage", "42000");
+  formData.set("transmission", "Automatic");
+  formData.set("fuelType", "Diesel");
+  formData.set("status", "published");
+  formData.set("stockCategory", "used");
+  formData.set(
+    "description",
+    "A clean SUV with strong condition notes and ready availability.",
+  );
+  return formData;
+}
+
 describe("mapVehicleFormData", () => {
   it("maps form data into a typed vehicle payload", () => {
-    const formData = new FormData();
-    formData.set("title", "2020 Toyota Prado");
-    formData.set("stockCode", "kdl 001");
-    formData.set("make", "Toyota");
-    formData.set("model", "Prado");
-    formData.set("year", "2020");
-    formData.set("condition", "Foreign used");
-    formData.set("price", "6500000");
-    formData.set("mileage", "42000");
-    formData.set("transmission", "Automatic");
-    formData.set("fuelType", "Diesel");
-    formData.set("status", "published");
-    formData.set("stockCategory", "used");
-    formData.set("description", "A clean SUV with strong condition notes and ready availability.");
+    const formData = buildVehicleFormData();
     formData.set(
       "imagesJson",
       JSON.stringify([
@@ -36,5 +44,60 @@ describe("mapVehicleFormData", () => {
     expect(result.price).toBe(6500000);
     expect(result.images).toHaveLength(1);
     expect(result.images[0].isHero).toBe(true);
+  });
+
+  it("accepts staged URL images with explicit pending state", () => {
+    const formData = buildVehicleFormData();
+    formData.set(
+      "imagesJson",
+      JSON.stringify([
+        {
+          imageUrl: "https://example.com/car.jpg",
+          sourceUrl: "https://example.com/car.jpg",
+          sortOrder: 0,
+          isHero: true,
+          uploadState: "pending_url",
+        },
+      ]),
+    );
+
+    const result = mapVehicleFormData(formData);
+
+    expect(result.images[0].uploadState).toBe("pending_url");
+    expect(result.images[0].sourceUrl).toBe("https://example.com/car.jpg");
+  });
+
+  it("rejects blob preview URLs marked as uploaded", () => {
+    const formData = buildVehicleFormData();
+    formData.set(
+      "imagesJson",
+      JSON.stringify([
+        {
+          imageUrl: "blob:vehicle-preview",
+          sortOrder: 0,
+          isHero: true,
+          uploadState: "uploaded",
+        },
+      ]),
+    );
+
+    expect(() => mapVehicleFormData(formData)).toThrowError(/valid image url/i);
+  });
+
+  it("rejects staged files that are missing file metadata", () => {
+    const formData = buildVehicleFormData();
+    formData.set(
+      "imagesJson",
+      JSON.stringify([
+        {
+          imageUrl: "blob:vehicle-preview",
+          sortOrder: 0,
+          isHero: true,
+          uploadState: "pending_file",
+        },
+      ]),
+    );
+
+    expect(() => mapVehicleFormData(formData)).toThrowError(/staged files/i);
   });
 });

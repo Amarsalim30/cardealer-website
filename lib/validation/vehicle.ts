@@ -2,25 +2,63 @@ import { z } from "zod";
 
 import { stockCategories, vehicleStatuses } from "@/types/dealership";
 
-export const vehicleImageSchema = z.object({
-  imageUrl: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        /^blob:/i.test(value) ||
-        /^https?:\/\//i.test(value),
-      "Use a valid image URL.",
-    ),
+const nullishSchema = z.union([z.null(), z.undefined()]);
+const httpImageUrlSchema = z
+  .string()
+  .trim()
+  .url("Use a valid image URL.")
+  .refine((value) => /^https?:\/\//i.test(value), "Use a valid image URL.");
+const blobImageUrlSchema = z
+  .string()
+  .trim()
+  .refine(
+    (value) => /^blob:/i.test(value),
+    "Staged files must use a blob preview URL.",
+  );
+const vehicleImageBaseSchema = z.object({
   altText: z.string().trim().optional(),
-  cloudinaryPublicId: z.string().trim().optional(),
   sortOrder: z.number().int().min(0),
   isHero: z.boolean(),
-  uploadState: z.enum(["uploaded", "pending_file", "pending_url"]).optional(),
-  sourceUrl: z.string().trim().optional(),
-  pendingFileId: z.string().trim().optional(),
-  pendingFileOrder: z.number().int().min(0).optional(),
 });
+
+const uploadedVehicleImageSchema = vehicleImageBaseSchema.extend({
+  uploadState: z.literal("uploaded"),
+  imageUrl: httpImageUrlSchema,
+  cloudinaryPublicId: z.string().trim().min(1).optional().nullable(),
+  sourceUrl: nullishSchema,
+  pendingFileId: nullishSchema,
+  pendingFileOrder: nullishSchema,
+});
+
+const pendingUrlVehicleImageSchema = vehicleImageBaseSchema.extend({
+  uploadState: z.literal("pending_url"),
+  imageUrl: httpImageUrlSchema,
+  sourceUrl: httpImageUrlSchema,
+  cloudinaryPublicId: nullishSchema,
+  pendingFileId: nullishSchema,
+  pendingFileOrder: nullishSchema,
+});
+
+const pendingFileVehicleImageSchema = vehicleImageBaseSchema.extend({
+  uploadState: z.literal("pending_file"),
+  imageUrl: blobImageUrlSchema,
+  cloudinaryPublicId: nullishSchema,
+  sourceUrl: nullishSchema,
+  pendingFileId: z
+    .string({ error: "Staged files are missing. Add them again." })
+    .trim()
+    .min(1, "Staged files are missing. Add them again."),
+  pendingFileOrder: z
+    .number({ error: "Staged files are missing. Add them again." })
+    .int()
+    .min(0),
+});
+
+export const vehicleImageSchema = z.discriminatedUnion("uploadState", [
+  uploadedVehicleImageSchema,
+  pendingUrlVehicleImageSchema,
+  pendingFileVehicleImageSchema,
+]);
 
 export const vehicleFormSchema = z.object({
   id: z.string().trim().optional(),

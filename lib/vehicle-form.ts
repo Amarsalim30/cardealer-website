@@ -7,6 +7,30 @@ import {
 } from "@/lib/utils";
 import type { VehicleFormInput, VehicleImageInput } from "@/types/dealership";
 
+function isBlobUrl(value: unknown) {
+  return typeof value === "string" && /^blob:/i.test(value.trim());
+}
+
+function resolveUploadState(image: VehicleImageInput) {
+  if (image.uploadState) {
+    return image.uploadState;
+  }
+
+  if (image.sourceUrl) {
+    return "pending_url" as const;
+  }
+
+  if (
+    image.pendingFileId ||
+    typeof image.pendingFileOrder === "number" ||
+    isBlobUrl(image.imageUrl)
+  ) {
+    return "pending_file" as const;
+  }
+
+  return "uploaded" as const;
+}
+
 function parseImages(value: string | undefined): VehicleImageInput[] {
   if (!value) {
     return [];
@@ -18,7 +42,7 @@ function parseImages(value: string | undefined): VehicleImageInput[] {
       ...image,
       sortOrder: image.sortOrder ?? index,
       isHero: Boolean(image.isHero),
-      uploadState: image.uploadState || "uploaded",
+      uploadState: resolveUploadState(image),
       sourceUrl: image.sourceUrl || undefined,
       pendingFileId: image.pendingFileId || undefined,
       pendingFileOrder:

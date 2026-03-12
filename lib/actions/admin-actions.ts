@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdminSession, signInDemoAdmin, signOutAdmin } from "@/lib/auth";
-import { allowDemoAdmin, hasSupabaseConfig } from "@/lib/env";
+import { allowDemoAdmin, hasCloudinaryConfig, hasSupabaseConfig } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   deleteCloudinaryAssets,
@@ -20,7 +20,7 @@ import {
   toggleVehicleFeatured,
   updateVehicleStatus,
 } from "@/lib/data/repository";
-import type { ActionState } from "@/types/dealership";
+import type { ActionState, VehicleFormInput } from "@/types/dealership";
 
 function validationErrorState(error: {
   flatten: () => { fieldErrors: Record<string, string[]> };
@@ -29,6 +29,147 @@ function validationErrorState(error: {
     success: false,
     message: "Please review the highlighted fields and try again.",
     fieldErrors: error.flatten().fieldErrors,
+  };
+}
+
+class VehicleSaveActionError extends Error {}
+
+async function cleanupUploadedVehicleImages(publicIds: string[]) {
+  if (!publicIds.length) {
+    return;
+  }
+
+  try {
+    await deleteCloudinaryAssets(publicIds);
+  } catch (error) {
+    console.warn(
+      "[cloudinary] Unable to clean up uploaded vehicle images after a failed save.",
+      error instanceof Error ? error.message : error,
+    );
+  }
+}
+
+async function finalizeVehicleImages(
+  input: VehicleFormInput,
+  pendingFiles: File[],
+  uploadedPublicIds: string[],
+  options: { canUploadToCloudinary: boolean; sessionMode: "demo" | "supabase" },
+) {
+  const finalizedImages: VehicleFormInput["images"] = [];
+
+  for (const image of input.images) {
+    if (image.uploadState === "pending_url") {
+      if (!image.sourceUrl) {
+        throw new VehicleSaveActionError(
+          "One staged image URL is missing. Add it again and save.",
+        );
+      }
+
+      if (!options.canUploadToCloudinary) {
+        finalizedImages.push({
+          ...image,
+          imageUrl: image.sourceUrl,
+          cloudinaryPublicId: null,
+          uploadState: "uploaded",
+          sourceUrl: null,
+          pendingFileId: null,
+          pendingFileOrder: null,
+        });
+        continue;
+      }
+
+      try {
+        const uploaded = await uploadVehicleImageFromUrl(image.sourceUrl, {
+          stockCode: input.stockCode,
+        });
+
+        uploadedPublicIds.push(uploaded.publicId);
+        finalizedImages.push({
+          ...image,
+          imageUrl: uploaded.secureUrl,
+          cloudinaryPublicId: uploaded.publicId,
+          uploadState: "uploaded",
+          sourceUrl: null,
+          pendingFileId: null,
+          pendingFileOrder: null,
+        });
+      } catch (error) {
+        throw new VehicleSaveActionError(
+          error instanceof Error ? error.message : "Image upload failed.",
+        );
+      }
+
+      continue;
+    }
+
+    if (image.uploadState === "pending_file") {
+      if (options.sessionMode === "demo") {
+        throw new VehicleSaveActionError(
+          "File uploads are unavailable in demo mode. Use image URLs instead.",
+        );
+      }
+
+      if (!hasCloudinaryConfig) {
+        throw new VehicleSaveActionError(
+          "Cloudinary is not configured for file uploads. Add image URLs instead.",
+        );
+      }
+
+      if (!image.pendingFileId || typeof image.pendingFileOrder !== "number") {
+        throw new VehicleSaveActionError(
+          "One staged file is incomplete. Add it again and save.",
+        );
+      }
+
+      const file = pendingFiles[image.pendingFileOrder];
+
+      if (!file) {
+        throw new VehicleSaveActionError(
+          "One of the staged files is missing. Add it again and save.",
+        );
+      }
+
+      try {
+        const uploaded = await uploadVehicleImage(file, {
+          stockCode: input.stockCode,
+        });
+
+        uploadedPublicIds.push(uploaded.publicId);
+        finalizedImages.push({
+          ...image,
+          imageUrl: uploaded.secureUrl,
+          cloudinaryPublicId: uploaded.publicId,
+          uploadState: "uploaded",
+          sourceUrl: null,
+          pendingFileId: null,
+          pendingFileOrder: null,
+        });
+      } catch (error) {
+        throw new VehicleSaveActionError(
+          error instanceof Error ? error.message : "Image upload failed.",
+        );
+      }
+
+      continue;
+    }
+
+    if (image.uploadState !== "uploaded") {
+      throw new VehicleSaveActionError(
+        "One image is still unresolved. Add it again and save.",
+      );
+    }
+
+    finalizedImages.push({
+      ...image,
+      uploadState: "uploaded",
+      sourceUrl: null,
+      pendingFileId: null,
+      pendingFileOrder: null,
+    });
+  }
+
+  return {
+    finalizedImages,
   };
 }
 
@@ -123,94 +264,45 @@ export async function saveVehicleAction(
   formData: FormData,
 ): Promise<ActionState> {
   const session = await requireAdminSession();
+  const uploadedPublicIds: string[] = [];
+  let vehicle: Awaited<ReturnType<typeof saveVehicle>>;
 
   try {
     const input = mapVehicleFormData(formData);
     const pendingFiles = formData.getAll("pendingFiles").filter(
       (entry): entry is File => entry instanceof File,
     );
-    const uploadedPublicIds: string[] = [];
-    const finalizedImages = [];
-
-    for (const image of input.images) {
-      if (image.uploadState === "pending_url" && image.sourceUrl) {
-        const uploaded = await uploadVehicleImageFromUrl(image.sourceUrl, {
-          stockCode: input.stockCode,
-        });
-        uploadedPublicIds.push(uploaded.publicId);
-        finalizedImages.push({
-          ...image,
-          imageUrl: uploaded.secureUrl,
-          cloudinaryPublicId: uploaded.publicId,
-          uploadState: "uploaded" as const,
-          sourceUrl: null,
-          pendingFileId: null,
-          pendingFileOrder: null,
-        });
-        continue;
-      }
-
-      if (
-        image.uploadState === "pending_file" &&
-        typeof image.pendingFileOrder === "number"
-      ) {
-        const file = pendingFiles[image.pendingFileOrder];
-
-        if (!file) {
-          throw new Error("One of the staged files is missing. Add it again and save.");
-        }
-
-        const uploaded = await uploadVehicleImage(file, {
-          stockCode: input.stockCode,
-        });
-        uploadedPublicIds.push(uploaded.publicId);
-        finalizedImages.push({
-          ...image,
-          imageUrl: uploaded.secureUrl,
-          cloudinaryPublicId: uploaded.publicId,
-          uploadState: "uploaded" as const,
-          sourceUrl: null,
-          pendingFileId: null,
-          pendingFileOrder: null,
-        });
-        continue;
-      }
-
-      finalizedImages.push({
-        ...image,
-        uploadState: "uploaded" as const,
-        sourceUrl: null,
-        pendingFileId: null,
-        pendingFileOrder: null,
-      });
-    }
+    const finalized = await finalizeVehicleImages(
+      input,
+      pendingFiles,
+      uploadedPublicIds,
+      {
+        canUploadToCloudinary: session.mode !== "demo" && hasCloudinaryConfig,
+        sessionMode: session.mode,
+      },
+    );
 
     const inputWithUploadedImages = {
       ...input,
-      images: finalizedImages,
+      images: finalized.finalizedImages,
     };
-
-    let vehicle;
-
-    try {
-      vehicle = await saveVehicle(inputWithUploadedImages, {
-        forceDemo: session.mode === "demo",
-      });
-    } catch (error) {
-      if (uploadedPublicIds.length) {
-        await deleteCloudinaryAssets(uploadedPublicIds);
-      }
-
-      throw error;
-    }
-    revalidateVehiclePaths(vehicle.slug);
-    revalidatePath("/admin/vehicles");
-    redirect("/admin/vehicles");
+    vehicle = await saveVehicle(inputWithUploadedImages, {
+      forceDemo: session.mode === "demo",
+    });
   } catch (error) {
+    await cleanupUploadedVehicleImages(uploadedPublicIds);
+
     if (error instanceof Error && "flatten" in error) {
       return validationErrorState(
         error as unknown as { flatten: () => { fieldErrors: Record<string, string[]> } },
       );
+    }
+
+    if (error instanceof VehicleSaveActionError) {
+      return {
+        success: false,
+        message: error.message,
+      };
     }
 
     return {
@@ -218,6 +310,10 @@ export async function saveVehicleAction(
       message: "We could not save the vehicle right now.",
     };
   }
+
+  revalidateVehiclePaths(vehicle.slug);
+  revalidatePath("/admin/vehicles");
+  redirect("/admin/vehicles");
 }
 
 export async function setVehicleStatusAction(formData: FormData) {

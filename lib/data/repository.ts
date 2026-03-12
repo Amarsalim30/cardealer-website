@@ -539,23 +539,32 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
     throw vehicleError;
   }
 
-  await serverClient.from("vehicle_images").delete().eq("vehicle_id", nextVehicle.id);
+  const { error: deleteImagesError } = await serverClient
+    .from("vehicle_images")
+    .delete()
+    .eq("vehicle_id", nextVehicle.id);
 
-  const { error: imagesError } = await serverClient.from("vehicle_images").insert(
-    nextVehicle.images.map((image) => ({
-      id: image.id,
-      vehicle_id: nextVehicle.id,
-      cloudinary_public_id: image.cloudinaryPublicId,
-      image_url: image.imageUrl,
-      alt_text: image.altText,
-      sort_order: image.sortOrder,
-      is_hero: image.isHero,
-      created_at: image.createdAt,
-    })),
-  );
+  if (deleteImagesError) {
+    throw deleteImagesError;
+  }
 
-  if (imagesError) {
-    throw imagesError;
+  if (nextVehicle.images.length) {
+    const { error: imagesError } = await serverClient.from("vehicle_images").insert(
+      nextVehicle.images.map((image) => ({
+        id: image.id,
+        vehicle_id: nextVehicle.id,
+        cloudinary_public_id: image.cloudinaryPublicId,
+        image_url: image.imageUrl,
+        alt_text: image.altText,
+        sort_order: image.sortOrder,
+        is_hero: image.isHero,
+        created_at: image.createdAt,
+      })),
+    );
+
+    if (imagesError) {
+      throw imagesError;
+    }
   }
 
   if (removedCloudinaryPublicIds.length) {
@@ -750,8 +759,23 @@ export async function deleteVehicle(id: string, options: WriteOptions = {}) {
     return;
   }
 
-  await serverClient.from("vehicle_images").delete().eq("vehicle_id", id);
-  await serverClient.from("vehicles").delete().eq("id", id);
+  const { error: deleteImagesError } = await serverClient
+    .from("vehicle_images")
+    .delete()
+    .eq("vehicle_id", id);
+
+  if (deleteImagesError) {
+    throw deleteImagesError;
+  }
+
+  const { error: deleteVehicleError } = await serverClient
+    .from("vehicles")
+    .delete()
+    .eq("id", id);
+
+  if (deleteVehicleError) {
+    throw deleteVehicleError;
+  }
 
   if (existing) {
     try {
