@@ -100,6 +100,7 @@ export default async function InventoryCategoryPage({
       <section className="section-shell">
         <div className="container-shell space-y-10">
           <SectionHeading
+            as="h1"
             eyebrow="Category inventory"
             title={categoryMap[category].title}
             description={categoryMap[category].description}

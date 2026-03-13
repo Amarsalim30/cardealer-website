@@ -20,9 +20,10 @@ export default async function AboutPage() {
     <section className="section-shell">
       <div className="container-shell space-y-12">
         <SectionHeading
+          as="h1"
           eyebrow="About and trust"
-          title="A dealership experience designed around confidence, not clutter"
-          description="The MVP focuses on what actually helps buyers convert: clear inventory, honest contact options, and a buying process that feels guided rather than noisy."
+          title="Why Mombasa buyers start with Ocean Motors"
+          description="Most buyers do not need a long brand story. They need clear stock, honest follow-up, and a dealership team that makes the next step obvious."
           align="center"
         />
 
@@ -56,35 +57,33 @@ export default async function AboutPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="rounded-[28px] p-8">
             <h2 className="text-2xl font-semibold text-stone-950">
-              Why buyers trust the process
+              What buyers notice first
             </h2>
             <ul className="mt-6 space-y-3 text-sm leading-7 text-stone-600">
               <li>
-                Listings stay structured and readable instead of hiding key facts
-                under visual noise.
+                Pricing, mileage, and key specs appear early, so buyers can screen cars quickly.
               </li>
               <li>
-                WhatsApp and phone contact remain visible at every high-intent
-                moment.
+                Phone and WhatsApp contact stay close to high-intent moments instead of hiding in the footer.
               </li>
               <li>
-                Finance and trade-in routes are treated as conversion paths, not
-                secondary links.
+                Finance and trade-in conversations start simply, without forcing a long application before a buyer is ready.
               </li>
             </ul>
           </Card>
           <Card className="rounded-[28px] p-8">
             <h2 className="text-2xl font-semibold text-stone-950">
-              Operational posture
+              What happens after you enquire
             </h2>
             <ul className="mt-6 space-y-3 text-sm leading-7 text-stone-600">
-              <li>Keep inventory current with clear publish and sold states.</li>
               <li>
-                Use featured placement sparingly so important units still stand out.
+                Sales confirm availability first, then guide you to the right showroom or yard.
               </li>
               <li>
-                Follow up quickly on leads instead of trying to over-automate the
-                workflow.
+                Viewings, trade-ins, and finance questions are handled as separate next steps so the conversation stays clear.
+              </li>
+              <li>
+                Listings are kept current so buyers spend less time chasing cars that are no longer available.
               </li>
             </ul>
           </Card>

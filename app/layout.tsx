@@ -35,9 +35,9 @@ export default async function RootLayout({
     <html lang="en">
       <body className={`${bodyFont.variable} ${displayFont.variable} antialiased`}>
         <JsonLd data={autoDealerJsonLd} />
-        <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(171,110,56,0.14),_transparent_36%),linear-gradient(180deg,_#fffaf5,_#f5efe8_58%,_#f9f7f4)] text-stone-900">
+        <div className="flex min-h-screen flex-col bg-[radial-gradient(circle_at_top,_rgba(171,110,56,0.14),_transparent_36%),linear-gradient(180deg,_#fffaf5,_#f5efe8_58%,_#f9f7f4)] text-stone-900">
           <SiteHeader />
-          <main>{children}</main>
+          <main className="flex-1">{children}</main>
           <SiteFooter />
         </div>
       </body>

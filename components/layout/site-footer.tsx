@@ -14,8 +14,19 @@ export function SiteFooter() {
           </p>
           <div className="space-y-1 text-sm text-stone-300">
             <p>{siteConfig.address}</p>
-            <p>{siteConfig.phoneDisplay}</p>
-            <p>{siteConfig.salesEmail}</p>
+            <p>
+              <a href={siteConfig.phoneHref} className="hover:text-white">
+                {siteConfig.phoneDisplay}
+              </a>
+            </p>
+            <p>
+              <a
+                href={`mailto:${siteConfig.salesEmail}`}
+                className="hover:text-white"
+              >
+                {siteConfig.salesEmail}
+              </a>
+            </p>
           </div>
         </div>
 

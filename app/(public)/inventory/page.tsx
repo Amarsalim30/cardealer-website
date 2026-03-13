@@ -41,9 +41,10 @@ export default async function InventoryPage({
       <section className="section-shell">
         <div className="container-shell space-y-10">
           <SectionHeading
+            as="h1"
             eyebrow="Our Inventory"
             title="Browse Available Vehicles"
-            description="Use the filters below to find exactly what you're looking for. All listed vehicles are physically available for inspection before purchase."
+            description="Start with the search bar if you already know the make or model. Open more filters only when you need to narrow the list further."
           />
           <InventoryFilterBar query={query} facets={result.facets} />
 

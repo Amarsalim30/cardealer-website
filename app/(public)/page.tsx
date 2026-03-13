@@ -217,6 +217,9 @@ export default async function Home() {
       .filter(
         (vehicle): vehicle is DeliveredVehicleCardData => vehicle !== null,
       );
+  const inventoryMakes = Array.from(
+    new Set(vehicles.map((vehicle) => vehicle.make).filter(Boolean)),
+  ).sort((left, right) => left.localeCompare(right));
 
   return (
     <>
@@ -251,7 +254,7 @@ export default async function Home() {
 
               {/* Subheadline */}
               <p className="mx-auto max-w-[640px] text-lg font-light leading-relaxed text-white/90 sm:text-xl md:text-2xl">
-                Discover a curated collection of premium SUVs and sedans. Transparent pricing, flexible financing, and a flawless journey from showroom to driveway.
+                Browse cars that are physically available in Mombasa, compare the essentials quickly, and move to a viewing without chasing unclear next steps.
               </p>
 
               {/* Action Buttons */}
@@ -266,7 +269,7 @@ export default async function Home() {
                     className="flex items-center gap-2 text-white"
                     style={{ color: "#ffffff" }}
                   >
-                    Explore Collection
+                    View Cars Available Now
                     <svg className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
@@ -285,18 +288,25 @@ export default async function Home() {
                     style={{ color: "#ffffff" }}
                   >
                     <WhatsAppIcon className="size-5 text-[#25d366] transition-transform group-hover:scale-110 duration-300" />
-                    Contact Sales
+                    WhatsApp Sales
                   </a>
                 </Button>
               </div>
 
-              {/* Trust Strip */}
-              <div className="hidden mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-white/80 lowercase tracking-wider sm:gap-6">
-                <span className="flex items-center gap-1.5"><span className="text-[#25d366]">✔</span> Trusted Mombasa Dealer</span>
-                <span className="flex items-center gap-1.5"><span className="text-[#25d366]">✔</span> Fully Inspected Vehicles</span>
-                <span className="flex items-center gap-1.5"><span className="text-[#25d366]">✔</span> Fast WhatsApp Response</span>
+              {/* Credibility badges */}
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-[0.72rem] font-medium text-white/82">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-black/26 px-3 py-1.5 backdrop-blur-sm">
+                  <Star className="size-3.5 fill-[#fbbf24] text-[#fbbf24]" />
+                  4.8 Google Rating
+                </span>
+                <span className="inline-flex items-center rounded-full border border-white/12 bg-black/26 px-3 py-1.5 backdrop-blur-sm">
+                  200+ Cars Sold
+                </span>
+                <span className="inline-flex items-center rounded-full border border-white/12 bg-black/26 px-3 py-1.5 backdrop-blur-sm">
+                  Trusted by Mombasa Buyers
+                </span>
               </div>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-white/80 lowercase tracking-wider sm:gap-6">
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-white/80 tracking-wider sm:gap-6">
                 <span className="flex items-center gap-1.5">
                   <Check className="size-3.5 text-[#25d366]" />
                   Trusted Mombasa Dealer
@@ -308,18 +318,6 @@ export default async function Home() {
                 <span className="flex items-center gap-1.5">
                   <Check className="size-3.5 text-[#25d366]" />
                   Fast WhatsApp Response
-                </span>
-              </div>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-[0.72rem] font-medium text-white/82">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-black/26 px-3 py-1.5 backdrop-blur-sm">
-                  <Star className="size-3.5 fill-[#fbbf24] text-[#fbbf24]" />
-                  4.8 Google Rating
-                </span>
-                <span className="inline-flex items-center rounded-full border border-white/12 bg-black/26 px-3 py-1.5 backdrop-blur-sm">
-                  200+ Cars Sold
-                </span>
-                <span className="inline-flex items-center rounded-full border border-white/12 bg-black/26 px-3 py-1.5 backdrop-blur-sm">
-                  Trusted by Mombasa Buyers
                 </span>
               </div>
             </div>
@@ -358,13 +356,11 @@ export default async function Home() {
                       defaultValue=""
                     >
                       <option value="">Any Make</option>
-                      <option value="Toyota">Toyota</option>
-                      <option value="Land Rover">Land Rover</option>
-                      <option value="Mazda">Mazda</option>
-                      <option value="Subaru">Subaru</option>
-                      <option value="Nissan">Nissan</option>
-                      <option value="BMW">BMW</option>
-                      <option value="Ford">Ford</option>
+                      {inventoryMakes.map((make) => (
+                        <option key={make} value={make}>
+                          {make}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none sm:right-6">
@@ -385,7 +381,7 @@ export default async function Home() {
                       className="w-full appearance-none bg-transparent p-0 text-sm font-semibold text-stone-700 outline-none border-none focus:ring-0 sm:text-base cursor-pointer mt-0.5"
                       defaultValue=""
                     >
-                      <option value="">All Conditions</option>
+                      <option value="">Any Condition</option>
                       <option value="used">Local Used</option>
                       <option value="new">Brand New</option>
                       <option value="imported">Direct Import</option>
@@ -399,10 +395,10 @@ export default async function Home() {
                   </div>
                 </div>
 
-                <div className="hidden h-10 w-px bg-stone-200 md:block" />
+                <div className="hidden h-10 w-px bg-stone-200 lg:block" />
 
                 {/* Sort Select */}
-                <div className="group relative flex flex-1 items-center px-4 py-3 sm:px-6 md:py-2 transition-colors hover:bg-stone-50 md:rounded-full cursor-pointer">
+                <div className="group relative hidden flex-1 items-center px-4 py-3 transition-colors hover:bg-stone-50 lg:flex lg:rounded-full lg:px-6 lg:py-2">
                   <div className="w-full pr-6">
                     <label className="block text-[0.65rem] font-bold uppercase tracking-wider text-stone-900">Sort By</label>
                     <select
@@ -682,8 +678,8 @@ export default async function Home() {
           <div className="container-shell space-y-8">
             <SectionHeading
               eyebrow="Testimonials"
-              title="Trust-building copy stays close to the buyer journey"
-              description="Reviews reinforce responsiveness, clarity, and confidence instead of chasing empty brand language."
+              title="What buyers say after they visit or enquire"
+              description="These reviews reinforce the things that matter most when someone is close to buying: clear photos, fast answers, and a straightforward next step."
             />
             <TestimonialsCarousel reviews={reviews} />
             <div className="hidden gap-5 md:grid md:grid-cols-2 xl:grid-cols-3">
@@ -711,15 +707,15 @@ export default async function Home() {
                     Next step
                   </p>
                   <h2 className="mt-4 display-font text-4xl">
-                    Shortlist With Logic. Close on WhatsApp.
+                    Ready to view a car or ask the right question?
                   </h2>
                   <p className="mt-4 max-w-2xl text-sm leading-7 text-stone-300">
-                    Review inventory first, then message us when you want availability, financing guidance, or the fastest route to reserve the right car.
+                    Start with inventory if you want to compare cars. Use WhatsApp when you want availability, financing guidance, a walk-around video, or the fastest route to booking a viewing.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Button asChild>
-                    <Link href="/inventory">Review Inventory</Link>
+                    <Link href="/inventory">Browse Inventory</Link>
                   </Button>
                   <Button
                     asChild
@@ -727,7 +723,7 @@ export default async function Home() {
                   >
                     <a href={homepageWhatsAppUrl} target="_blank" rel="noreferrer">
                       <WhatsAppIcon className="size-4" />
-                      Reserve on WhatsApp
+                      Ask on WhatsApp
                     </a>
                   </Button>
                 </div>

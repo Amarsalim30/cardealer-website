@@ -10,7 +10,10 @@ import { navigationLinks, siteConfig } from "@/lib/config/site";
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const headerLinks = navigationLinks.filter(
+  const desktopLinks = navigationLinks.filter(
+    (link) => link.href !== "/" && link.href !== "/inventory",
+  );
+  const mobileLinks = navigationLinks.filter(
     (link) => link.href !== "/" && link.href !== "/inventory",
   );
 
@@ -37,7 +40,7 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex">
-          {headerLinks.map((link) => (
+          {desktopLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -63,20 +66,36 @@ export function SiteHeader() {
           </Button>
         </div>
 
-        <button
-          type="button"
-          className="inline-flex size-11 items-center justify-center rounded-full border border-border text-stone-900 lg:hidden"
-          onClick={() => setOpen((value) => !value)}
-          aria-label="Toggle navigation"
-        >
-          {open ? <X className="size-5" /> : <Menu className="size-5" />}
-        </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <Button asChild size="sm" className="h-10 px-4">
+            <Link href="/inventory" style={{ color: "#ffffff" }}>
+              Inventory
+            </Link>
+          </Button>
+          <button
+            type="button"
+            className="inline-flex size-11 items-center justify-center rounded-full border border-border text-stone-900"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-label="Toggle navigation"
+          >
+            {open ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
       </div>
 
       {open ? (
         <div className="border-t border-border bg-white/95 lg:hidden">
-          <div className="container-shell flex flex-col gap-2 py-4">
-            {headerLinks.map((link) => (
+          <div className="container-shell flex flex-col gap-3 py-4">
+            <div className="grid gap-3">
+              <Button asChild variant="secondary" className="h-11">
+                <a href={siteConfig.phoneHref}>
+                  <Phone className="size-4" />
+                  {siteConfig.phoneDisplay}
+                </a>
+              </Button>
+            </div>
+            {mobileLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -86,12 +105,6 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
-            <a
-              href={siteConfig.phoneHref}
-              className="rounded-2xl border border-border px-4 py-3 text-sm font-medium text-stone-700"
-            >
-              Call {siteConfig.phoneDisplay}
-            </a>
           </div>
         </div>
       ) : null}
