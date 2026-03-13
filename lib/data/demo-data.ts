@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import type {
   LeadRecord,
+  LeadWorkflowStateRecord,
   Location,
   Review,
   TestDriveRequest,
@@ -721,12 +722,40 @@ const tradeInRequests: TradeInRequest[] = [
   },
 ];
 
+const leadWorkflowStates: LeadWorkflowStateRecord[] = [
+  {
+    id: "lead-state-1",
+    sourceType: "lead",
+    sourceId: "lead-1",
+    status: "follow_up",
+    lastContactedAt: "2026-03-06T14:00:00.000Z",
+    updatedAt: "2026-03-06T14:00:00.000Z",
+  },
+  {
+    id: "lead-state-2",
+    sourceType: "lead",
+    sourceId: "lead-2",
+    status: "new",
+    lastContactedAt: null,
+    updatedAt: "2026-03-06T09:30:00.000Z",
+  },
+  {
+    id: "lead-state-3",
+    sourceType: "trade_in",
+    sourceId: "trade-in-1",
+    status: "contacted",
+    lastContactedAt: "2026-03-05T15:10:00.000Z",
+    updatedAt: "2026-03-05T15:10:00.000Z",
+  },
+];
+
 export function createDemoData() {
   return {
     vehicles,
     locations,
     reviews,
     leads,
+    leadWorkflowStates,
     testDriveRequests,
     tradeInRequests,
   };

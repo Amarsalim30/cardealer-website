@@ -5,6 +5,7 @@ import { isE2ETestRuntime } from "@/lib/env";
 import { createDemoData } from "@/lib/data/demo-data";
 import type {
   LeadRecord,
+  LeadWorkflowStateRecord,
   Location,
   Review,
   TestDriveRequest,
@@ -17,6 +18,7 @@ type DemoState = {
   locations: Location[];
   reviews: Review[];
   leads: LeadRecord[];
+  leadWorkflowStates: LeadWorkflowStateRecord[];
   testDriveRequests: TestDriveRequest[];
   tradeInRequests: TradeInRequest[];
 };

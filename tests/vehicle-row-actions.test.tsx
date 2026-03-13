@@ -33,15 +33,20 @@ describe("VehicleRowActions", () => {
 
     expect(screen.queryByText(/confirm delete/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /actions/i }));
+    fireEvent.click(screen.getByRole("button", { name: /delete vehicle/i }));
 
-    expect(screen.getByText(/confirm delete\?/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^confirm$/i }),
+      screen.getByText(
+        "This removes the listing from the admin inventory.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /confirm delete/i }),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
 
-    expect(screen.queryByText(/confirm delete\?/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/confirm delete/i)).not.toBeInTheDocument();
   });
 });

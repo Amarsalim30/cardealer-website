@@ -9,12 +9,6 @@ export default async function AdminProtectedLayout({
   const session = await requireAdminSession();
 
   return (
-    <AdminShell
-      session={session}
-      title="Admin workspace"
-      description="Manage vehicle listings, publishing state, featured inventory, and incoming leads from one lean dashboard."
-    >
-      {children}
-    </AdminShell>
+    <AdminShell session={session}>{children}</AdminShell>
   );
 }

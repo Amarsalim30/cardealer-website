@@ -19,10 +19,16 @@ import {
   saveVehicle,
   syncVehicleImagesFromCloudinary,
   toggleVehicleFeatured,
+  updateLeadInboxState,
   updateVehicleStatus,
 } from "@/lib/data/repository";
 import { mapVehicleFormData } from "@/lib/vehicle-form";
-import type { ActionState, VehicleFormInput } from "@/types/dealership";
+import type {
+  ActionState,
+  LeadInboxSourceType,
+  LeadWorkflowStatus,
+  VehicleFormInput,
+} from "@/types/dealership";
 
 function validationErrorState(error: {
   flatten: () => { fieldErrors: Record<string, string[]> };
@@ -241,10 +247,14 @@ export async function saveVehicleAction(
   const session = await requireAdminSession();
   const uploadedPublicIds = parseNewUploadPublicIds(formData);
   let vehicle: Awaited<ReturnType<typeof saveVehicle>>;
+  let isEditing = false;
 
   try {
     const input = mapVehicleFormData(formData);
-    const adminVehicles = await getAdminVehicles();
+    isEditing = Boolean(input.id);
+    const adminVehicles = await getAdminVehicles({
+      forceDemo: session.mode === "demo",
+    });
     const currentVehicle = adminVehicles.find((item) => item.id === input.id);
     const resolvedIdentifiers = resolveVehicleIdentifiers(
       {
@@ -295,7 +305,13 @@ export async function saveVehicleAction(
 
   revalidateVehiclePaths(vehicle.slug);
   revalidatePath("/admin/vehicles");
-  return actionSuccess("Vehicle saved successfully.", "/admin/vehicles");
+  revalidatePath(`/admin/vehicles/${vehicle.id}`);
+  return isEditing
+    ? actionSuccess("Vehicle saved successfully.")
+    : actionSuccess(
+        "Vehicle created successfully.",
+        `/admin/vehicles/${vehicle.id}?saved=1`,
+      );
 }
 
 export async function setVehicleStatusAction(
@@ -367,7 +383,9 @@ export async function deleteVehicleAction(
       return actionFailure("Vehicle id is required.");
     }
 
-    const vehicle = await getVehicleById(id);
+    const vehicle = await getVehicleById(id, {
+      forceDemo: session.mode === "demo",
+    });
     await deleteVehicle(id, {
       forceDemo: session.mode === "demo",
     });
@@ -407,6 +425,45 @@ export async function syncVehicleImagesAction(
   } catch (error) {
     return actionFailure(
       error instanceof Error ? error.message : "Cloudinary folder sync failed.",
+    );
+  }
+}
+
+export async function updateLeadInboxStateAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireAdminSession();
+    const sourceId = String(formData.get("sourceId") || "");
+    const sourceType = String(formData.get("sourceType") || "") as LeadInboxSourceType;
+    const status = String(formData.get("status") || "") as LeadWorkflowStatus;
+
+    if (!sourceId || !sourceType || !status) {
+      return actionFailure("Select a lead status before trying again.");
+    }
+
+    await updateLeadInboxState(
+      {
+        sourceId,
+        sourceType,
+        status,
+      },
+      {
+        forceDemo: session.mode === "demo",
+      },
+    );
+
+    revalidatePath("/admin/leads");
+
+    if (status === "contacted") {
+      return actionSuccess("Lead marked as contacted.");
+    }
+
+    return actionSuccess("Lead status updated.");
+  } catch (error) {
+    return actionFailure(
+      error instanceof Error ? error.message : "Lead status could not be updated.",
     );
   }
 }

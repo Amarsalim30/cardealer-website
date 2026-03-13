@@ -32,11 +32,34 @@ export const leadInboxFilters = [
   "trade_in",
 ] as const;
 
+export const leadWorkflowStatuses = [
+  "new",
+  "contacted",
+  "follow_up",
+  "closed",
+] as const;
+
+export const leadInboxSourceTypes = [
+  "lead",
+  "test_drive",
+  "trade_in",
+] as const;
+
+export const adminVehicleSortOptions = [
+  "updated-desc",
+  "price-desc",
+  "price-asc",
+] as const;
+
 export type StockCategory = (typeof stockCategories)[number];
 export type VehicleStatus = (typeof vehicleStatuses)[number];
 export type LeadType = (typeof leadTypes)[number];
 export type InventorySort = (typeof inventorySortOptions)[number];
 export type LeadInboxFilter = (typeof leadInboxFilters)[number];
+export type LeadWorkflowStatus = (typeof leadWorkflowStatuses)[number];
+export type LeadInboxSourceType = (typeof leadInboxSourceTypes)[number];
+export type LeadInboxStatusFilter = "all" | LeadWorkflowStatus;
+export type AdminVehicleSort = (typeof adminVehicleSortOptions)[number];
 
 export interface Location {
   id: string;
@@ -197,9 +220,26 @@ export interface TradeInRequest extends TradeInRequestInput {
   createdAt: string;
 }
 
+export interface LeadInboxDetail {
+  label: string;
+  value: string;
+}
+
+export interface LeadWorkflowStateRecord {
+  id: string;
+  sourceType: LeadInboxSourceType;
+  sourceId: string;
+  status: LeadWorkflowStatus;
+  lastContactedAt?: string | null;
+  updatedAt: string;
+}
+
 export interface LeadInboxItem {
   id: string;
   type: Exclude<LeadInboxFilter, "all">;
+  sourceType: LeadInboxSourceType;
+  sourceId: string;
+  status: LeadWorkflowStatus;
   name: string;
   phone: string;
   email?: string | null;
@@ -207,7 +247,26 @@ export interface LeadInboxItem {
   vehicleTitle?: string | null;
   source?: string | null;
   createdAt: string;
-  meta: Record<string, string | number | null | undefined>;
+  lastContactedAt?: string | null;
+  details: LeadInboxDetail[];
+}
+
+export interface LeadInboxSummary {
+  total: number;
+  newCount: number;
+  contactedCount: number;
+  followUpCount: number;
+  closedCount: number;
+}
+
+export interface LeadInboxResult {
+  items: LeadInboxItem[];
+  filters: {
+    type: LeadInboxFilter;
+    status: LeadInboxStatusFilter;
+  };
+  summary: LeadInboxSummary;
+  typeCounts: Record<LeadInboxFilter, number>;
 }
 
 export interface ActionState {
@@ -258,6 +317,29 @@ export interface VehicleFormInput {
   stockCategory: StockCategory;
   description: string;
   images: VehicleImageInput[];
+}
+
+export interface AdminVehicleWorkspaceQuery {
+  q?: string;
+  status?: VehicleStatus | "all";
+  category?: StockCategory | "all";
+  featured?: "all" | "featured" | "standard";
+  location?: string;
+  sort?: AdminVehicleSort;
+}
+
+export interface AdminVehicleWorkspaceSummary {
+  total: number;
+  published: number;
+  draft: number;
+  sold: number;
+}
+
+export interface AdminVehicleWorkspaceResult {
+  items: Vehicle[];
+  filters: Required<AdminVehicleWorkspaceQuery>;
+  locations: Array<Pick<Location, "id" | "name">>;
+  summary: AdminVehicleWorkspaceSummary;
 }
 
 export interface HomeStats {

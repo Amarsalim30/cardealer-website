@@ -196,6 +196,7 @@ describe("saveVehicleAction", () => {
       }),
     );
     mocks.saveVehicle.mockResolvedValue({
+      id: "vehicle-created",
       slug: "2020-toyota-prado",
     });
 
@@ -206,8 +207,8 @@ describe("saveVehicleAction", () => {
 
     expect(result).toEqual({
       success: true,
-      message: "Vehicle saved successfully.",
-      redirectTo: "/admin/vehicles",
+      message: "Vehicle created successfully.",
+      redirectTo: "/admin/vehicles/vehicle-created?saved=1",
     });
     expect(mocks.uploadVehicleImageFromUrl).not.toHaveBeenCalled();
     expect(mocks.saveVehicle).toHaveBeenCalledWith(
@@ -222,6 +223,38 @@ describe("saveVehicleAction", () => {
       }),
       { forceDemo: false },
     );
+  });
+
+  it("keeps edit saves on the same page instead of redirecting back to the list", async () => {
+    mocks.envState.hasCloudinaryConfig = false;
+    mocks.mapVehicleFormData.mockReturnValue(
+      buildVehicleInput({
+        id: "vehicle-1",
+        images: [
+          {
+            imageUrl: "https://example.com/car.jpg",
+            sourceUrl: "https://example.com/car.jpg",
+            sortOrder: 0,
+            isHero: true,
+            uploadState: "pending_url",
+          },
+        ],
+      }),
+    );
+    mocks.saveVehicle.mockResolvedValue({
+      id: "vehicle-1",
+      slug: "2020-toyota-prado",
+    });
+
+    const result = await saveVehicleAction(
+      { success: false, message: "" },
+      new FormData(),
+    );
+
+    expect(result).toEqual({
+      success: true,
+      message: "Vehicle saved successfully.",
+    });
   });
 
   it("derives unique stock codes and slugs before importing and saving", async () => {

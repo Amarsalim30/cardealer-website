@@ -2,7 +2,7 @@ import {
   deleteCloudinaryAssets,
   listCloudinaryVehicleAssets,
 } from "@/lib/cloudinary";
-import { sortByNewest } from "@/lib/utils";
+import { formatMileage, sortByNewest, vehicleSearchText } from "@/lib/utils";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { allowLocalDemoMode, hasCloudinaryConfig } from "@/lib/env";
@@ -15,11 +15,18 @@ import {
 import { RepositoryUnavailableError } from "@/lib/data/errors";
 import { getDemoState, mutateDemoState } from "@/lib/data/demo-store";
 import type {
+  AdminVehicleWorkspaceQuery,
+  AdminVehicleWorkspaceResult,
   InventoryQuery,
   LeadInboxFilter,
   LeadInboxItem,
+  LeadInboxResult,
+  LeadInboxSourceType,
+  LeadInboxStatusFilter,
   LeadInput,
   LeadRecord,
+  LeadWorkflowStateRecord,
+  LeadWorkflowStatus,
   Location,
   Review,
   TestDriveRequest,
@@ -84,6 +91,63 @@ function createAdminUnavailableError(message: string) {
 
 function createPersistenceUnavailableError(message: string) {
   return new RepositoryUnavailableError("persistence_unavailable", message);
+}
+
+function buildLeadWorkflowKey(sourceType: LeadInboxSourceType, sourceId: string) {
+  return `${sourceType}:${sourceId}`;
+}
+
+function buildLeadInboxSummary(items: LeadInboxItem[]) {
+  return items.reduce<LeadInboxResult["summary"]>(
+    (summary, item) => {
+      summary.total += 1;
+
+      if (item.status === "new") {
+        summary.newCount += 1;
+      } else if (item.status === "contacted") {
+        summary.contactedCount += 1;
+      } else if (item.status === "follow_up") {
+        summary.followUpCount += 1;
+      } else if (item.status === "closed") {
+        summary.closedCount += 1;
+      }
+
+      return summary;
+    },
+    {
+      total: 0,
+      newCount: 0,
+      contactedCount: 0,
+      followUpCount: 0,
+      closedCount: 0,
+    },
+  );
+}
+
+function buildLeadInboxTypeCounts(items: LeadInboxItem[]) {
+  return items.reduce<LeadInboxResult["typeCounts"]>(
+    (counts, item) => {
+      counts.all += 1;
+      counts[item.type] += 1;
+      return counts;
+    },
+    {
+      all: 0,
+      quote: 0,
+      contact: 0,
+      financing: 0,
+      test_drive: 0,
+      trade_in: 0,
+    },
+  );
+}
+
+function defaultLeadStatus(value: LeadInboxStatusFilter | undefined) {
+  return value || "all";
+}
+
+function defaultLeadType(value: LeadInboxFilter | undefined) {
+  return value || "all";
 }
 
 function handlePublicReadFailure<T>(
@@ -366,8 +430,10 @@ export async function getLocations() {
   })) satisfies Location[];
 }
 
-export async function getAdminLocations() {
-  const serverClient = await createSupabaseServerClient();
+export async function getAdminLocations(options: WriteOptions = {}) {
+  const serverClient = options.forceDemo
+    ? null
+    : await createSupabaseServerClient();
   const demoState = getLocalDemoState();
 
   if (!serverClient) {
@@ -532,8 +598,10 @@ export async function getVehicleBySlug(slug: string) {
   return vehicle ? hydrateVehicleGalleryFromCloudinary(vehicle) : null;
 }
 
-export async function getVehicleById(id: string) {
-  const serverClient = await createSupabaseServerClient();
+export async function getVehicleById(id: string, options: WriteOptions = {}) {
+  const serverClient = options.forceDemo
+    ? null
+    : await createSupabaseServerClient();
   const demoState = getLocalDemoState();
 
   if (serverClient) {
@@ -574,8 +642,10 @@ export async function getSimilarVehicles(vehicle: Vehicle, limit = 3) {
     .slice(0, limit);
 }
 
-export async function getAdminVehicles() {
-  const serverClient = await createSupabaseServerClient();
+export async function getAdminVehicles(options: WriteOptions = {}) {
+  const serverClient = options.forceDemo
+    ? null
+    : await createSupabaseServerClient();
   const demoState = getLocalDemoState();
 
   if (!serverClient) {
@@ -600,9 +670,109 @@ export async function getAdminVehicles() {
   }
 }
 
+function normalizeAdminVehicleWorkspaceQuery(
+  query: AdminVehicleWorkspaceQuery = {},
+) {
+  return {
+    q: query.q?.trim() || "",
+    status: query.status || "all",
+    category: query.category || "all",
+    featured: query.featured || "all",
+    location: query.location || "",
+    sort: query.sort || "updated-desc",
+  } satisfies Required<AdminVehicleWorkspaceQuery>;
+}
+
+function matchesAdminVehicleWorkspaceQuery(
+  vehicle: Vehicle,
+  filters: Required<AdminVehicleWorkspaceQuery>,
+) {
+  if (
+    filters.q &&
+    !vehicleSearchText(vehicle).includes(filters.q.toLowerCase())
+  ) {
+    return false;
+  }
+
+  if (filters.status !== "all" && vehicle.status !== filters.status) {
+    return false;
+  }
+
+  if (filters.category !== "all" && vehicle.stockCategory !== filters.category) {
+    return false;
+  }
+
+  if (filters.featured === "featured" && !vehicle.featured) {
+    return false;
+  }
+
+  if (filters.featured === "standard" && vehicle.featured) {
+    return false;
+  }
+
+  if (filters.location && vehicle.locationId !== filters.location) {
+    return false;
+  }
+
+  return true;
+}
+
+function sortAdminVehicleWorkspaceItems(
+  vehicles: Vehicle[],
+  sort: Required<AdminVehicleWorkspaceQuery>["sort"],
+) {
+  return [...vehicles].sort((left, right) => {
+    if (sort === "price-asc") {
+      return left.price - right.price;
+    }
+
+    if (sort === "price-desc") {
+      return right.price - left.price;
+    }
+
+    return (
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+    );
+  });
+}
+
+export async function getAdminVehicleWorkspace(
+  query: AdminVehicleWorkspaceQuery = {},
+  options: WriteOptions = {},
+): Promise<AdminVehicleWorkspaceResult> {
+  const vehicles = await getAdminVehicles(options);
+  const filters = normalizeAdminVehicleWorkspaceQuery(query);
+  const items = sortAdminVehicleWorkspaceItems(
+    vehicles.filter((vehicle) => matchesAdminVehicleWorkspaceQuery(vehicle, filters)),
+    filters.sort,
+  );
+
+  return {
+    items,
+    filters,
+    locations: vehicles
+      .map((vehicle) => vehicle.location)
+      .filter((location): location is NonNullable<Vehicle["location"]> => Boolean(location))
+      .filter(
+        (location, index, locations) =>
+          locations.findIndex((item) => item.id === location.id) === index,
+      )
+      .map((location) => ({
+        id: location.id,
+        name: location.name,
+      })),
+    summary: {
+      total: vehicles.length,
+      published: vehicles.filter((vehicle) => vehicle.status === "published").length,
+      draft: vehicles.filter((vehicle) => vehicle.status === "draft").length,
+      sold: vehicles.filter((vehicle) => vehicle.status === "sold").length,
+    },
+  };
+}
+
 export async function saveVehicle(input: VehicleFormInput, options: WriteOptions = {}) {
-  const locations = await getAdminLocations();
-  const existing = input.id ? await getVehicleById(input.id) : null;
+  const locations = await getAdminLocations(options);
+  const existing = input.id ? await getVehicleById(input.id, options) : null;
   const nextVehicle = createVehicleFromInput(input, existing || undefined, locations);
   const removedCloudinaryPublicIds = existing
     ? existing.images
@@ -712,8 +882,13 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
   return nextVehicle;
 }
 
-export async function getVehicleByStockCode(stockCode: string) {
-  const serverClient = await createSupabaseServerClient();
+export async function getVehicleByStockCode(
+  stockCode: string,
+  options: WriteOptions = {},
+) {
+  const serverClient = options.forceDemo
+    ? null
+    : await createSupabaseServerClient();
   const demoState = getLocalDemoState();
 
   if (serverClient) {
@@ -750,7 +925,7 @@ export async function syncVehicleImagesFromCloudinary(
   id: string,
   options: WriteOptions = {},
 ) {
-  const vehicle = await getVehicleById(id);
+  const vehicle = await getVehicleById(id, options);
 
   if (!vehicle) {
     throw new Error("Vehicle not found.");
@@ -823,9 +998,9 @@ export async function syncVehicleImagesFromCloudinary(
     throw updateError;
   }
 
-  return {
-    vehicle:
-      (await getVehicleById(id)) || {
+    return {
+      vehicle:
+      (await getVehicleById(id, options)) || {
         ...vehicle,
         images: syncedImages,
         heroImageUrl,
@@ -869,11 +1044,11 @@ export async function updateVehicleStatus(
     throw error;
   }
 
-  return getVehicleById(id);
+  return getVehicleById(id, options);
 }
 
 export async function toggleVehicleFeatured(id: string, options: WriteOptions = {}) {
-  const existing = await getVehicleById(id);
+  const existing = await getVehicleById(id, options);
   if (!existing) {
     return null;
   }
@@ -907,11 +1082,11 @@ export async function toggleVehicleFeatured(id: string, options: WriteOptions = 
     throw error;
   }
 
-  return getVehicleById(id);
+  return getVehicleById(id, options);
 }
 
 export async function deleteVehicle(id: string, options: WriteOptions = {}) {
-  const existing = await getVehicleById(id);
+  const existing = await getVehicleById(id, options);
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
@@ -1070,59 +1245,138 @@ export async function saveTradeInRequest(input: TradeInRequestInput) {
   return record;
 }
 
+function resolveLeadWorkflowState(
+  workflowLookup: Map<string, LeadWorkflowStateRecord>,
+  sourceType: LeadInboxSourceType,
+  sourceId: string,
+) {
+  return (
+    workflowLookup.get(buildLeadWorkflowKey(sourceType, sourceId)) || {
+      id: `${sourceType}-${sourceId}`,
+      sourceType,
+      sourceId,
+      status: "new" as LeadWorkflowStatus,
+      lastContactedAt: null,
+      updatedAt: "",
+    }
+  );
+}
+
 function toLeadInboxItems(
   leads: LeadRecord[],
   testDriveRequests: TestDriveRequest[],
   tradeInRequests: TradeInRequest[],
+  workflowStates: LeadWorkflowStateRecord[],
 ) {
-  const leadItems: LeadInboxItem[] = leads.map((item) => ({
-    id: item.id,
-    type: item.leadType,
-    name: item.name,
-    phone: item.phone,
-    email: item.email,
-    message: item.message,
-    vehicleTitle: item.vehicleTitle,
-    source: item.source,
-    createdAt: item.createdAt,
-    meta: {
-      leadType: item.leadType,
-      pageSource: item.source,
-    },
-  }));
+  const workflowLookup = new Map(
+    workflowStates.map((state) => [
+      buildLeadWorkflowKey(state.sourceType, state.sourceId),
+      state,
+    ]),
+  );
 
-  const testDriveItems: LeadInboxItem[] = testDriveRequests.map((item) => ({
-    id: item.id,
-    type: "test_drive",
-    name: item.name,
-    phone: item.phone,
-    email: item.email,
-    message: item.message,
-    vehicleTitle: item.vehicleTitle,
-    source: item.source,
-    createdAt: item.createdAt,
-    meta: {
-      preferredDate: item.preferredDate,
-      preferredTime: item.preferredTime,
-    },
-  }));
+  const leadItems: LeadInboxItem[] = leads.map((item) => {
+    const workflowState = resolveLeadWorkflowState(workflowLookup, "lead", item.id);
 
-  const tradeInItems: LeadInboxItem[] = tradeInRequests.map((item) => ({
-    id: item.id,
-    type: "trade_in",
-    name: item.name,
-    phone: item.phone,
-    email: item.email,
-    message: item.message,
-    vehicleTitle: item.desiredVehicleTitle,
-    source: item.source,
-    createdAt: item.createdAt,
-    meta: {
-      currentVehicle: `${item.currentVehicleYear} ${item.currentVehicleMake} ${item.currentVehicleModel}`,
-      mileage: item.currentVehicleMileage,
-      notes: item.conditionNotes,
-    },
-  }));
+    return {
+      id: item.id,
+      type: item.leadType,
+      sourceType: "lead",
+      sourceId: item.id,
+      status: workflowState.status,
+      name: item.name,
+      phone: item.phone,
+      email: item.email,
+      message: item.message,
+      vehicleTitle: item.vehicleTitle,
+      source: item.source,
+      createdAt: item.createdAt,
+      lastContactedAt: workflowState.lastContactedAt,
+      details: [
+        { label: "Lead type", value: item.leadType.replace("_", " ") },
+        ...(item.source
+          ? [{ label: "Page source", value: item.source }]
+          : []),
+        ...(item.utmSource
+          ? [{ label: "UTM source", value: item.utmSource }]
+          : []),
+        ...(item.utmMedium
+          ? [{ label: "UTM medium", value: item.utmMedium }]
+          : []),
+        ...(item.utmCampaign
+          ? [{ label: "UTM campaign", value: item.utmCampaign }]
+          : []),
+      ],
+    };
+  });
+
+  const testDriveItems: LeadInboxItem[] = testDriveRequests.map((item) => {
+    const workflowState = resolveLeadWorkflowState(
+      workflowLookup,
+      "test_drive",
+      item.id,
+    );
+
+    return {
+      id: item.id,
+      type: "test_drive",
+      sourceType: "test_drive",
+      sourceId: item.id,
+      status: workflowState.status,
+      name: item.name,
+      phone: item.phone,
+      email: item.email,
+      message: item.message,
+      vehicleTitle: item.vehicleTitle,
+      source: item.source,
+      createdAt: item.createdAt,
+      lastContactedAt: workflowState.lastContactedAt,
+      details: [
+        ...(item.preferredDate
+          ? [{ label: "Preferred date", value: item.preferredDate }]
+          : []),
+        ...(item.preferredTime
+          ? [{ label: "Preferred time", value: item.preferredTime }]
+          : []),
+      ],
+    };
+  });
+
+  const tradeInItems: LeadInboxItem[] = tradeInRequests.map((item) => {
+    const workflowState = resolveLeadWorkflowState(
+      workflowLookup,
+      "trade_in",
+      item.id,
+    );
+
+    return {
+      id: item.id,
+      type: "trade_in",
+      sourceType: "trade_in",
+      sourceId: item.id,
+      status: workflowState.status,
+      name: item.name,
+      phone: item.phone,
+      email: item.email,
+      message: item.message,
+      vehicleTitle: item.desiredVehicleTitle,
+      source: item.source,
+      createdAt: item.createdAt,
+      lastContactedAt: workflowState.lastContactedAt,
+      details: [
+        {
+          label: "Current vehicle",
+          value: `${item.currentVehicleYear} ${item.currentVehicleMake} ${item.currentVehicleModel}`,
+        },
+        ...(item.currentVehicleMileage
+          ? [{ label: "Mileage", value: formatMileage(item.currentVehicleMileage) }]
+          : []),
+        ...(item.conditionNotes
+          ? [{ label: "Condition notes", value: item.conditionNotes }]
+          : []),
+      ],
+    };
+  });
 
   return [...leadItems, ...testDriveItems, ...tradeInItems].sort(
     (left, right) =>
@@ -1130,14 +1384,17 @@ function toLeadInboxItems(
   );
 }
 
-async function fetchLeadTables() {
-  const serverClient = await createSupabaseServerClient();
+async function fetchLeadTables(options: WriteOptions = {}) {
+  const serverClient = options.forceDemo
+    ? null
+    : await createSupabaseServerClient();
   if (!serverClient) {
     const demoState = getLocalDemoState();
 
     if (demoState) {
       return {
         leads: clone(demoState.leads),
+        leadWorkflowStates: clone(demoState.leadWorkflowStates),
         testDriveRequests: clone(demoState.testDriveRequests),
         tradeInRequests: clone(demoState.tradeInRequests),
       };
@@ -1148,8 +1405,10 @@ async function fetchLeadTables() {
     );
   }
 
-  const [leadsResult, testDriveResult, tradeInResult, vehiclesResult] = await Promise.all([
+  const [leadsResult, workflowResult, testDriveResult, tradeInResult, vehiclesResult] =
+    await Promise.all([
     serverClient.from("leads").select("*").order("created_at", { ascending: false }),
+    serverClient.from("lead_inbox_state").select("*"),
     serverClient
       .from("test_drive_requests")
       .select("*")
@@ -1161,15 +1420,23 @@ async function fetchLeadTables() {
     serverClient.from("vehicles").select("id, title"),
   ]);
 
-  if (leadsResult.error || testDriveResult.error || tradeInResult.error || vehiclesResult.error) {
+  if (
+    leadsResult.error ||
+    workflowResult.error ||
+    testDriveResult.error ||
+    tradeInResult.error ||
+    vehiclesResult.error
+  ) {
     return handleAdminReadFailure(
       "[supabase] Failed to fetch admin leads",
       leadsResult.error ||
+        workflowResult.error ||
         testDriveResult.error ||
         tradeInResult.error ||
         vehiclesResult.error,
       {
         leads: getLocalDemoState()?.leads || [],
+        leadWorkflowStates: getLocalDemoState()?.leadWorkflowStates || [],
         testDriveRequests: getLocalDemoState()?.testDriveRequests || [],
         tradeInRequests: getLocalDemoState()?.tradeInRequests || [],
       },
@@ -1204,6 +1471,18 @@ async function fetchLeadTables() {
         createdAt: String(row.created_at),
       }),
     ),
+    leadWorkflowStates: (
+      (workflowResult.data || []) as Array<Record<string, unknown>>
+    ).map((row) => ({
+      id: String(row.id),
+      sourceType: row.source_type as LeadInboxSourceType,
+      sourceId: String(row.source_id),
+      status: row.status as LeadWorkflowStatus,
+      lastContactedAt: row.last_contacted_at
+        ? String(row.last_contacted_at)
+        : null,
+      updatedAt: String(row.updated_at),
+    })),
     testDriveRequests: (
       (testDriveResult.data || []) as Array<Record<string, unknown>>
     ).map((row) => ({
@@ -1248,17 +1527,130 @@ async function fetchLeadTables() {
   };
 }
 
-export async function getLeadInbox(filter: LeadInboxFilter = "all") {
-  const tables = await fetchLeadTables();
-  const items = toLeadInboxItems(
+export async function getLeadInbox(query: {
+  status?: LeadInboxStatusFilter;
+  type?: LeadInboxFilter;
+} = {}, options: WriteOptions = {}): Promise<LeadInboxResult> {
+  const tables = await fetchLeadTables(options);
+  const filters = {
+    type: defaultLeadType(query.type),
+    status: defaultLeadStatus(query.status),
+  };
+  const allItems = toLeadInboxItems(
     tables.leads,
     tables.testDriveRequests,
     tables.tradeInRequests,
+    tables.leadWorkflowStates,
   );
+  const items = allItems.filter((item) => {
+    if (filters.type !== "all" && item.type !== filters.type) {
+      return false;
+    }
 
-  if (filter === "all") {
-    return items;
+    if (filters.status !== "all" && item.status !== filters.status) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return {
+    items,
+    filters,
+    summary: buildLeadInboxSummary(allItems),
+    typeCounts: buildLeadInboxTypeCounts(allItems),
+  };
+}
+
+export async function updateLeadInboxState(
+  input: {
+    sourceId: string;
+    sourceType: LeadInboxSourceType;
+    status: LeadWorkflowStatus;
+  },
+  options: WriteOptions = {},
+) {
+  const now = new Date().toISOString();
+  const serverClient = await createSupabaseServerClient();
+
+  if (options.forceDemo || !serverClient) {
+    requireServerClientOrDemo(
+      "Lead workflow updates are unavailable until Supabase is configured.",
+      options.forceDemo,
+    );
+
+    return mutateDemoState((state) => {
+      const existing = state.leadWorkflowStates.find(
+        (item) =>
+          item.sourceId === input.sourceId && item.sourceType === input.sourceType,
+      );
+
+      if (existing) {
+        existing.status = input.status;
+        existing.lastContactedAt =
+          input.status === "contacted" ? now : existing.lastContactedAt || null;
+        existing.updatedAt = now;
+        return clone(existing);
+      }
+
+      const nextState: LeadWorkflowStateRecord = {
+        id: `lead-workflow-${Date.now()}`,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        status: input.status,
+        lastContactedAt: input.status === "contacted" ? now : null,
+        updatedAt: now,
+      };
+
+      state.leadWorkflowStates.unshift(nextState);
+      return clone(nextState);
+    });
   }
 
-  return items.filter((item) => item.type === filter);
+  const { data: existingState, error: existingStateError } = await serverClient
+    .from("lead_inbox_state")
+    .select("*")
+    .eq("source_type", input.sourceType)
+    .eq("source_id", input.sourceId)
+    .maybeSingle();
+
+  if (existingStateError) {
+    throw existingStateError;
+  }
+
+  const { data, error } = await serverClient
+    .from("lead_inbox_state")
+    .upsert(
+      {
+        id: existingState?.id,
+        source_type: input.sourceType,
+        source_id: input.sourceId,
+        status: input.status,
+        last_contacted_at:
+          input.status === "contacted"
+            ? now
+            : existingState?.last_contacted_at || null,
+        updated_at: now,
+      },
+      {
+        onConflict: "source_type,source_id",
+      },
+    )
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return {
+    id: String(data.id),
+    sourceType: data.source_type as LeadInboxSourceType,
+    sourceId: String(data.source_id),
+    status: data.status as LeadWorkflowStatus,
+    lastContactedAt: data.last_contacted_at
+      ? String(data.last_contacted_at)
+      : null,
+    updatedAt: String(data.updated_at),
+  } satisfies LeadWorkflowStateRecord;
 }

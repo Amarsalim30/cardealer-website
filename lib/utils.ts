@@ -73,7 +73,8 @@ export function buildVehicleUrl(vehicle: Pick<Vehicle, "slug">) {
 }
 
 export function buildWhatsAppUrl(message: string, phone = "254700123456") {
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  const normalizedPhone = phone.replace(/\D+/g, "");
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`;
 }
 
 export function isTruthy(value: FormDataEntryValue | null) {

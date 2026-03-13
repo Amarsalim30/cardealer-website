@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { MoreHorizontal, Star, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -27,6 +28,8 @@ export function VehicleRowActions({
   vehicleId: string;
 }) {
   const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [featureState, featureAction] = useActionState(
     toggleVehicleFeaturedAction,
@@ -52,6 +55,23 @@ export function VehicleRowActions({
     statusState.success,
   ]);
 
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+        setConfirmDelete(false);
+      }
+    }
+
+    if (menuOpen) {
+      document.addEventListener("mousedown", handlePointerDown);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [menuOpen]);
+
   const errorMessage =
     (!deleteState.success && deleteState.message) ||
     (!statusState.success && statusState.message) ||
@@ -60,91 +80,151 @@ export function VehicleRowActions({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2 lg:justify-end">
-        <form action={featureAction}>
-          <input type="hidden" name="id" value={vehicleId} />
-          <SubmitButton
-            size="sm"
-            variant="ghost"
-            onClick={() => setConfirmDelete(false)}
+      <div className="relative" ref={menuRef}>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="rounded-full"
+          onClick={() => setMenuOpen((current) => !current)}
+          aria-expanded={menuOpen}
+          aria-controls={`vehicle-row-actions-${vehicleId}`}
+        >
+          <MoreHorizontal className="size-4" />
+          Actions
+        </Button>
+
+        {menuOpen ? (
+          <div
+            id={`vehicle-row-actions-${vehicleId}`}
+            className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-72 rounded-[24px] border border-border/70 bg-white p-3 shadow-[0_20px_48px_rgba(15,23,42,0.14)]"
           >
-            {featured ? "Unfeature" : "Feature"}
-          </SubmitButton>
-        </form>
+            <div className="space-y-1">
+              <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-stone-500">
+                Listing actions
+              </p>
 
-        {status !== "published" ? (
-          <form action={statusAction}>
-            <input type="hidden" name="id" value={vehicleId} />
-            <input type="hidden" name="status" value="published" />
-            <SubmitButton
-              size="sm"
-              variant="secondary"
-              onClick={() => setConfirmDelete(false)}
-            >
-              Publish
-            </SubmitButton>
-          </form>
-        ) : (
-          <form action={statusAction}>
-            <input type="hidden" name="id" value={vehicleId} />
-            <input type="hidden" name="status" value="unpublished" />
-            <SubmitButton
-              size="sm"
-              variant="secondary"
-              onClick={() => setConfirmDelete(false)}
-            >
-              Unpublish
-            </SubmitButton>
-          </form>
-        )}
+              <form action={featureAction}>
+                <input type="hidden" name="id" value={vehicleId} />
+                <SubmitButton
+                  size="sm"
+                  variant="ghost"
+                  className="w-full justify-start rounded-2xl"
+                  onClick={() => {
+                    setConfirmDelete(false);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <Star className="size-4" />
+                  {featured ? "Remove featured" : "Mark featured"}
+                </SubmitButton>
+              </form>
 
-        {status !== "sold" ? (
-          <form action={statusAction}>
-            <input type="hidden" name="id" value={vehicleId} />
-            <input type="hidden" name="status" value="sold" />
-            <SubmitButton
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirmDelete(false)}
-            >
-              Mark sold
-            </SubmitButton>
-          </form>
-        ) : null}
+              {status !== "published" ? (
+                <form action={statusAction}>
+                  <input type="hidden" name="id" value={vehicleId} />
+                  <input type="hidden" name="status" value="published" />
+                  <SubmitButton
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-start rounded-2xl"
+                    onClick={() => {
+                      setConfirmDelete(false);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Publish listing
+                  </SubmitButton>
+                </form>
+              ) : (
+                <form action={statusAction}>
+                  <input type="hidden" name="id" value={vehicleId} />
+                  <input type="hidden" name="status" value="unpublished" />
+                  <SubmitButton
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-start rounded-2xl"
+                    onClick={() => {
+                      setConfirmDelete(false);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Move back to unpublished
+                  </SubmitButton>
+                </form>
+              )}
 
-        {!confirmDelete ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-          >
-            Delete
-          </Button>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2">
-            <span className="text-xs font-medium text-red-700">
-              Confirm delete?
-            </span>
-            <form action={deleteAction}>
-              <input type="hidden" name="id" value={vehicleId} />
-              <SubmitButton
-                size="sm"
-                className="bg-red-600 px-3 py-2 hover:bg-red-700"
-              >
-                Confirm
-              </SubmitButton>
-            </form>
-            <Button
-              size="sm"
-              variant="ghost"
-              type="button"
-              onClick={() => setConfirmDelete(false)}
-            >
-              Cancel
-            </Button>
+              {status !== "sold" ? (
+                <form action={statusAction}>
+                  <input type="hidden" name="id" value={vehicleId} />
+                  <input type="hidden" name="status" value="sold" />
+                  <SubmitButton
+                    size="sm"
+                    variant="ghost"
+                    className="w-full justify-start rounded-2xl"
+                    onClick={() => {
+                      setConfirmDelete(false);
+                      setMenuOpen(false);
+                    }}
+                  >
+                    Mark as sold
+                  </SubmitButton>
+                </form>
+              ) : null}
+            </div>
+
+            <div className="mt-3 border-t border-border/70 pt-3">
+              <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-red-700">
+                Danger zone
+              </p>
+
+              {!confirmDelete ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  className="mt-2 w-full justify-start rounded-2xl text-red-700 hover:bg-red-50 hover:text-red-800"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 className="size-4" />
+                  Delete vehicle
+                </Button>
+              ) : (
+                <div className="mt-2 rounded-[20px] border border-red-200 bg-red-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">
+                    Confirm delete
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-red-800">
+                    This removes the listing from the admin inventory.
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <form action={deleteAction}>
+                      <input type="hidden" name="id" value={vehicleId} />
+                      <SubmitButton
+                        size="sm"
+                        className="bg-red-600 px-3 py-2 hover:bg-red-700"
+                        onClick={() => {
+                          setConfirmDelete(false);
+                          setMenuOpen(false);
+                        }}
+                      >
+                        Confirm delete
+                      </SubmitButton>
+                    </form>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {errorMessage ? (

@@ -78,6 +78,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      lead_inbox_state: {
+        Row: {
+          id: string;
+          last_contacted_at: string | null;
+          source_id: string;
+          source_type: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          last_contacted_at?: string | null;
+          source_id: string;
+          source_type: string;
+          status: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          last_contacted_at?: string | null;
+          source_id?: string;
+          source_type?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       locations: {
         Row: {
           address_line: string;

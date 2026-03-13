@@ -7,10 +7,11 @@ test.describe.configure({ mode: "serial" });
 test("local demo admin can sign in", async ({ page }) => {
   await loginAsDemoAdmin(page);
 
-  await expect(page.getByRole("heading", { name: "Vehicles" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inventory" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /lead inbox/i })).toBeVisible();
 });
 
-test("admin can create a vehicle with direct image upload and gets delete confirmation", async ({
+test("admin can create a vehicle with direct image upload and manage it from the inventory workspace", async ({
   page,
 }) => {
   const uniqueSuffix = Date.now();
@@ -63,7 +64,7 @@ test("admin can create a vehicle with direct image upload and gets delete confir
   await page.getByLabel("Transmission").fill("Automatic");
   await page.getByLabel("Fuel type").fill("Petrol");
   await page
-    .getByLabel("Description")
+    .locator('textarea[name="description"]')
     .fill(
       "Clean Corolla test listing with direct upload coverage for the admin save flow.",
     );
@@ -79,8 +80,34 @@ test("admin can create a vehicle with direct image upload and gets delete confir
   await page.getByRole("button", { name: /save vehicle/i }).click();
 
   await expect.poll(() => uploadCount).toBe(1);
+  await expect(page).toHaveURL(/\/admin\/vehicles\/[^/?]+\?saved=1$/);
+  await expect(page.getByText(/saved just now/i)).toBeVisible();
+
+  await page.getByRole("link", { name: /return to inventory/i }).click();
   await expect(page).toHaveURL(/\/admin\/vehicles$/);
-  await page.getByRole("button", { name: /^delete$/i }).last().click();
-  await expect(page.getByText(/confirm delete\?/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: /^confirm$/i })).toBeVisible();
+
+  await page.getByLabel("Search").fill(title);
+  await page.getByRole("button", { name: /^apply$/i }).click();
+  await expect(page.getByText(title)).toBeVisible();
+
+  await page.getByRole("button", { name: /actions/i }).click();
+  await page.getByRole("button", { name: /delete vehicle/i }).click();
+  await expect(
+    page.getByText("This removes the listing from the admin inventory."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /confirm delete/i }),
+  ).toBeVisible();
+});
+
+test("lead inbox remains usable on mobile without falling back to a table", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsDemoAdmin(page);
+  await page.goto("/admin/leads");
+
+  await expect(page.getByRole("heading", { name: "Lead inbox" })).toBeVisible();
+  await expect(page.locator("table")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /call/i }).first()).toBeVisible();
 });

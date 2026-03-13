@@ -17,12 +17,14 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
 
   try {
     const payload = requestSchema.parse(await request.json());
     const draftIdentifiers = buildVehicleDraftIdentifiers(payload);
-    const vehicles = await getAdminVehicles();
+    const vehicles = await getAdminVehicles({
+      forceDemo: session.mode === "demo",
+    });
     const resolvedIdentifiers = resolveVehicleIdentifiers(
       {
         id: payload.id,

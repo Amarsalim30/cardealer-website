@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { ArrowUp, ImagePlus, LoaderCircle, Star, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -65,7 +66,15 @@ type PreparedUploadPayload = {
 
 const initialState: ActionState = { success: false, message: "" };
 const selectClassName =
-  "h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm text-stone-900";
+  "h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm text-stone-900 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20";
+
+const editorSections = [
+  { id: "basics", label: "Basics" },
+  { id: "listing-setup", label: "Listing setup" },
+  { id: "gallery", label: "Gallery" },
+  { id: "vehicle-details", label: "Vehicle details" },
+  { id: "description", label: "Description" },
+] as const;
 
 const conditionOptions = [
   "Foreign used",
@@ -108,16 +117,26 @@ function getImageLabel(imageUrl: string, fallbackIndex: number) {
 }
 
 function FormSection({
+  id,
   title,
   description,
   children,
+  className,
 }: {
+  id: string;
   title: string;
   description: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="space-y-4 border-t border-border/70 pt-6 first:border-t-0 first:pt-0">
+    <section
+      id={id}
+      className={cn(
+        "scroll-mt-32 space-y-4 border-t border-border/70 pt-6 first:border-t-0 first:pt-0 lg:scroll-mt-24",
+        className,
+      )}
+    >
       <div className="space-y-1">
         <h3 className="text-base font-semibold text-stone-950">{title}</h3>
         <p className="text-sm text-stone-600">{description}</p>
@@ -130,14 +149,17 @@ function FormSection({
 export function VehicleForm({
   locations,
   vehicle,
+  initialNotice,
 }: {
   locations: Location[];
   vehicle?: Vehicle | null;
+  initialNotice?: string;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [isSubmitting, startSubmitting] = useTransition();
   const [state, setState] = useState<ActionState>(initialState);
+  const [successNotice, setSuccessNotice] = useState(initialNotice || "");
   const [images, setImages] = useState<EditableImage[]>(() =>
     makeEditableImages(vehicle),
   );
@@ -147,10 +169,15 @@ export function VehicleForm({
   const [make, setMake] = useState(vehicle?.make || "");
   const [model, setModel] = useState(vehicle?.model || "");
   const [year, setYear] = useState(vehicle?.year ? String(vehicle.year) : "");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(
+    initialNotice ? new Date().toISOString() : null,
+  );
   const filePickerRef = useRef<HTMLInputElement>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const pendingFilesRef = useRef<PendingFile[]>([]);
   const normalizedImages = useMemo(() => normalizeImages(images), [images]);
+  const isEditing = Boolean(vehicle?.id);
 
   function normalizeImages(nextImages: EditableImage[]) {
     const heroIndex = nextImages.findIndex((image) => image.isHero);
@@ -181,6 +208,16 @@ export function VehicleForm({
   }, [pendingFiles]);
 
   useEffect(() => {
+    if (!initialNotice) {
+      return;
+    }
+
+    setSuccessNotice(initialNotice);
+    setLastSavedAt(new Date().toISOString());
+    setHasUnsavedChanges(false);
+  }, [initialNotice]);
+
+  useEffect(() => {
     return () => {
       pendingFilesRef.current.forEach((item) =>
         URL.revokeObjectURL(item.previewUrl),
@@ -202,12 +239,18 @@ export function VehicleForm({
     return {
       "aria-describedby": error ? getFieldErrorId(name) : undefined,
       "aria-invalid": error ? true : undefined,
-      className: error ? "border-red-500 focus:border-red-600" : undefined,
+      className: error
+        ? "border-red-500 focus-visible:border-red-600"
+        : undefined,
     };
   }
 
   function openFilePicker() {
     filePickerRef.current?.click();
+  }
+
+  function clearSuccessNotice() {
+    setSuccessNotice("");
   }
 
   function setGlobalError(message: string) {
@@ -216,6 +259,39 @@ export function VehicleForm({
       message,
       success: false,
     }));
+  }
+
+  function markUnsaved() {
+    setHasUnsavedChanges(true);
+    clearSuccessNotice();
+  }
+
+  function getSaveStatusLabel() {
+    if (isSubmitting) {
+      return "Saving changes";
+    }
+
+    if (hasUnsavedChanges) {
+      return "Unsaved changes";
+    }
+
+    if (lastSavedAt) {
+      return "Saved just now";
+    }
+
+    return isEditing ? "No unsaved changes" : "Ready to create";
+  }
+
+  function getSaveStatusVariant() {
+    if (isSubmitting) {
+      return "accent" as const;
+    }
+
+    if (hasUnsavedChanges) {
+      return "muted" as const;
+    }
+
+    return "success" as const;
   }
 
   function ensureImageLimit(nextCount: number) {
@@ -396,6 +472,7 @@ export function VehicleForm({
 
     setUploadError("");
     setState(initialState);
+    clearSuccessNotice();
 
     try {
       const draftIdentifiers = buildVehicleDraftIdentifiers({
@@ -427,12 +504,21 @@ export function VehicleForm({
       }
 
       const result = await saveVehicleAction(initialState, formData);
-      setState(result);
 
       if (result.success && result.redirectTo) {
         router.push(result.redirectTo);
-        router.refresh();
+        return;
       }
+
+      if (result.success) {
+        setState(initialState);
+        setHasUnsavedChanges(false);
+        setLastSavedAt(new Date().toISOString());
+        setSuccessNotice(result.message || "Vehicle saved successfully.");
+        return;
+      }
+
+      setState(result);
     } catch (error) {
       setGlobalError(
         error instanceof Error
@@ -474,6 +560,7 @@ export function VehicleForm({
 
     setUploadError("");
     setState(initialState);
+    markUnsaved();
     setImages((current) =>
       normalizeImages([
         ...current,
@@ -511,6 +598,7 @@ export function VehicleForm({
 
       setUploadError("");
       setState(initialState);
+      markUnsaved();
       setPendingFiles((current) => [...current, ...nextPendingFiles]);
       setImages((current) =>
         normalizeImages([
@@ -540,6 +628,7 @@ export function VehicleForm({
   }
 
   function removeImage(index: number) {
+    markUnsaved();
     setImages((current) => {
       const removedImage = current[index];
 
@@ -571,6 +660,7 @@ export function VehicleForm({
       return;
     }
 
+    markUnsaved();
     setImages((current) => {
       const next = [...current];
       const target = next[index];
@@ -581,6 +671,7 @@ export function VehicleForm({
   }
 
   function setHero(index: number) {
+    markUnsaved();
     setImages((current) =>
       normalizeImages(
         current.map((image, item) => ({
@@ -593,12 +684,86 @@ export function VehicleForm({
 
   return (
     <Card className="rounded-[28px] p-5 sm:p-6">
-      <form ref={formRef} onSubmit={handleSubmit} className="space-y-7">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        onChangeCapture={() => {
+          setHasUnsavedChanges(true);
+          clearSuccessNotice();
+        }}
+        className="flex flex-col gap-7"
+      >
         <input type="hidden" name="id" value={vehicle?.id || ""} />
 
+        <div className="sticky top-[4.75rem] z-20 rounded-[28px] border border-white/80 bg-white/96 px-4 py-4 shadow-[0_18px_42px_rgba(15,23,42,0.08)] backdrop-blur lg:top-6 sm:px-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={getSaveStatusVariant()}>{getSaveStatusLabel()}</Badge>
+                {vehicle?.stockCode ? (
+                  <Badge variant="muted">Stock {vehicle.stockCode}</Badge>
+                ) : null}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-stone-950">
+                  {isEditing
+                    ? "Stay in the editor while you update the listing."
+                    : "The first save creates the listing and keeps you inside the editor."}
+                </p>
+                <p className="mt-1 text-sm text-stone-600">
+                  Use the section links below to jump between content blocks without
+                  losing your place.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Button asChild variant="secondary" className="w-full sm:w-auto">
+                <Link href="/admin/vehicles">Return to inventory</Link>
+              </Button>
+              <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
+                {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
+                {isEditing ? "Save changes" : "Save vehicle"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <nav
+          aria-label="Vehicle editor sections"
+          className="flex flex-wrap gap-2 rounded-[26px] border border-border/70 bg-stone-50/90 p-3"
+        >
+          {editorSections.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="rounded-full border border-border/70 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-600 transition-colors hover:border-primary/25 hover:text-stone-950"
+            >
+              {section.label}
+            </a>
+          ))}
+        </nav>
+
+        {successNotice ? (
+          <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm font-medium text-emerald-800">
+            {successNotice}
+          </div>
+        ) : null}
+
+        {state.message ? (
+          <div
+            className="rounded-[24px] border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700"
+            role="alert"
+          >
+            {state.message}
+          </div>
+        ) : null}
+
         <FormSection
+          id="basics"
           title="Basics"
           description="Keep the key listing fields fast to fill. The reference code and vehicle URL are managed automatically."
+          className="order-1"
         >
           <div className="grid gap-4 xl:grid-cols-3">
             <div className="xl:col-span-2">
@@ -670,8 +835,10 @@ export function VehicleForm({
         </FormSection>
 
         <FormSection
+          id="listing-setup"
           title="Listing setup"
           description="These fields control how the vehicle appears in admin and on the live site."
+          className="order-2"
         >
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
@@ -793,8 +960,10 @@ export function VehicleForm({
         </FormSection>
 
         <FormSection
+          id="vehicle-details"
           title="Vehicle details"
           description="Use the common options for speed, but keep the fields open for custom entries when needed."
+          className="order-4 lg:order-3"
         >
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
@@ -883,8 +1052,10 @@ export function VehicleForm({
         </FormSection>
 
         <FormSection
+          id="description"
           title="Description"
           description="Keep the copy short and sales-led so the website reads cleanly."
+          className="order-5 lg:order-4"
         >
           <Label htmlFor="description">Description</Label>
           <Textarea
@@ -903,8 +1074,10 @@ export function VehicleForm({
         </FormSection>
 
         <FormSection
+          id="gallery"
           title="Gallery"
           description="Stage files or URLs here. Files upload directly to Cloudinary when you save the vehicle."
+          className="order-3 lg:order-5"
         >
           <input
             ref={filePickerRef}
@@ -1009,37 +1182,40 @@ export function VehicleForm({
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 md:justify-end">
-                      <button
+                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      {image.isHero ? (
+                        <Badge variant="accent">Hero image</Badge>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setHero(index)}
+                        >
+                          <Star className="size-4" />
+                          Make hero
+                        </Button>
+                      )}
+                      <Button
                         type="button"
-                        className="inline-flex size-10 items-center justify-center rounded-full border border-border"
-                        onClick={() => setHero(index)}
-                        aria-label="Set hero image"
-                      >
-                        <Star
-                          className={`size-4 ${
-                            image.isHero
-                              ? "fill-primary text-primary"
-                              : "text-stone-500"
-                          }`}
-                        />
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex size-10 items-center justify-center rounded-full border border-border"
+                        size="sm"
+                        variant="ghost"
                         onClick={() => moveImageUp(index)}
-                        aria-label="Move image up"
+                        disabled={index === 0}
                       >
-                        <ArrowUp className="size-4 text-stone-500" />
-                      </button>
-                      <button
+                        <ArrowUp className="size-4" />
+                        Move up
+                      </Button>
+                      <Button
                         type="button"
-                        className="inline-flex size-10 items-center justify-center rounded-full border border-border"
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-700 hover:bg-red-50 hover:text-red-800"
                         onClick={() => removeImage(index)}
-                        aria-label="Remove image"
                       >
-                        <Trash2 className="size-4 text-stone-500" />
-                      </button>
+                        <Trash2 className="size-4" />
+                        Remove
+                      </Button>
                     </div>
                   </div>
                 );
@@ -1054,26 +1230,16 @@ export function VehicleForm({
           )}
         </FormSection>
 
-        {state.message ? (
-          <p
-            className={cn(
-              "text-sm",
-              state.success ? "text-emerald-700" : "text-red-600",
-            )}
-            role={state.success ? undefined : "alert"}
-          >
-            {state.message}
-          </p>
-        ) : null}
-
         <div className="flex flex-col gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-stone-600">
-            Save once when the listing copy and gallery are ready.
+            Gallery order, hero selection, and listing details are all committed with
+            the save action.
           </p>
-          <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
-            {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            Save Vehicle
-          </Button>
+          {lastSavedAt ? (
+            <p className="text-sm font-medium text-emerald-700">
+              Last saved in this session.
+            </p>
+          ) : null}
         </div>
 
         <datalist id="vehicle-condition-options">
