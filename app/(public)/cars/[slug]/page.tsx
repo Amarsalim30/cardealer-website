@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/layout/json-ld";
@@ -30,15 +30,23 @@ import {
   humanizeStockCategory,
 } from "@/lib/utils";
 
-function buildQuickFacts(vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>) {
+function buildSummarySpecs(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+) {
   return [
-    vehicle.transmission === "Automatic"
-      ? "Easy automatic drive"
-      : `${vehicle.transmission} drive`,
-    `${vehicle.fuelType} power`,
-    vehicle.bodyType ? `${vehicle.bodyType} style` : null,
-    vehicle.mileage > 0 ? `${formatMileage(vehicle.mileage)} driven` : null,
-  ].filter((value): value is string => Boolean(value));
+    {
+      label: "Mileage",
+      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
+    },
+    {
+      label: "Transmission",
+      value: vehicle.transmission,
+    },
+    {
+      label: "Fuel",
+      value: vehicle.fuelType,
+    },
+  ];
 }
 
 function buildBuyerSummary(
@@ -180,7 +188,7 @@ export default async function VehicleDetailPage({
     siteConfig.whatsappNumber,
   );
   const photoCount = vehicle.images.length || (vehicle.heroImageUrl ? 1 : 0);
-  const quickFacts = buildQuickFacts(vehicle);
+  const summarySpecs = buildSummarySpecs(vehicle);
   const buyerSummary = buildBuyerSummary(vehicle, photoCount);
   const buyerHighlights = buyerSummary.slice(0, 4);
   const overviewHighlights = buildOverviewHighlights(vehicle);
@@ -217,7 +225,7 @@ export default async function VehicleDetailPage({
               </div>
 
               <div>
-                <h1 className="text-balance text-[2.75rem] font-semibold leading-[1.1] tracking-tight text-text-primary lg:text-5xl">
+                <h1 className="text-[2.15rem] font-semibold leading-[1.06] tracking-tight text-text-primary break-words [overflow-wrap:anywhere] sm:text-[2.45rem] lg:text-5xl">
                   {vehicle.title}
                 </h1>
                 <div className="mt-5 flex flex-wrap items-center gap-4 text-[0.85rem] font-medium text-text-secondary">
@@ -231,26 +239,30 @@ export default async function VehicleDetailPage({
                 </div>
               </div>
 
-              <Card className="rounded-[32px] p-7 lg:p-9 xl:p-10">
+              <Card className="rounded-[32px] p-6 lg:p-8 xl:p-9">
                 <p className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-text-secondary">
-                  Total Price
+                  Listed Price
                 </p>
-                <p className="mt-2 text-[3rem] font-black leading-none tracking-tight text-accent lg:text-[3.5rem] xl:text-[4rem]">
+                <p className="mt-1.5 max-w-full text-[clamp(2.25rem,9vw,4rem)] font-black leading-[0.96] tracking-tight text-accent [overflow-wrap:anywhere]">
                   {formatCurrency(vehicle.price)}
                 </p>
-                <div className="mt-6 flex flex-wrap gap-2.5">
-                  {quickFacts.map((fact) => (
-                    <span
-                      key={fact}
-                      className="rounded-xl border border-border bg-surface-elevated px-3.5 py-2 text-[0.8rem] font-medium text-text-secondary"
+                <div className="mt-5 grid grid-cols-3 gap-2">
+                  {summarySpecs.map((spec) => (
+                    <div
+                      key={spec.label}
+                      className="min-w-0 rounded-[10px] border border-border/80 bg-[#F5F7FA] px-3 py-2.5"
                     >
-                      {fact}
-                    </span>
+                      <p className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-text-secondary">
+                        {spec.label}
+                      </p>
+                      <p className="mt-1 text-[0.92rem] font-bold leading-tight text-text-primary break-words [overflow-wrap:anywhere] sm:text-[0.95rem]">
+                        {spec.value}
+                      </p>
+                    </div>
                   ))}
                 </div>
                 <p className="mt-5 text-[0.85rem] leading-relaxed text-text-secondary">
-                  The fastest path is WhatsApp. Use the secondary actions only if
-                  you already know the next step you want.
+                  Review the photos, then message or call for availability and the next step.
                 </p>
                 <div className="mt-7 grid gap-3.5">
                   <Button
@@ -269,11 +281,19 @@ export default async function VehicleDetailPage({
                     variant="secondary"
                     className="h-14 w-full rounded-2xl text-base font-semibold"
                   >
-                    <Link href={`${baseVehiclePath}?intent=viewing#contact-panel`}>
-                      Book a Visit / Test Drive
-                    </Link>
+                    <a href={siteConfig.phoneHref}>
+                      <Phone className="mr-2 size-[1.05rem]" />
+                      Call About This Car
+                    </a>
                   </Button>
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-2 text-[0.85rem] font-bold text-text-secondary">
+                    <Link
+                      href={`${baseVehiclePath}?intent=viewing#contact-panel`}
+                      className="transition-colors hover:text-accent"
+                    >
+                      Book a Visit / Test Drive
+                    </Link>
+                    <span className="hidden h-1 w-1 rounded-full bg-border md:block" />
                     <Link
                       href={`${baseVehiclePath}?intent=financing#contact-panel`}
                       className="transition-colors hover:text-accent"

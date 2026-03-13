@@ -180,34 +180,34 @@ function HeroSearchPanel({
     <form
       action="/inventory"
       className={cn(
-        "flex flex-col items-stretch rounded-[1.15rem] border border-border/90 bg-surface/94 p-1 shadow-[0_12px_26px_rgba(28,35,43,0.05)] transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-accent/20 focus-within:shadow-[0_16px_34px_rgba(23,58,94,0.08)] sm:rounded-[1.5rem] md:flex-row md:items-center md:rounded-[1.6rem] md:p-1.5",
+        "flex flex-col items-stretch gap-2 rounded-[1.08rem] border border-border/90 bg-surface/96 p-3 shadow-[0_12px_26px_rgba(28,35,43,0.05)] transition-[border-color,box-shadow,background-color] duration-200 focus-within:border-accent/20 focus-within:shadow-[0_16px_34px_rgba(23,58,94,0.08)] sm:rounded-[1.5rem] md:gap-0 md:bg-surface/94 md:p-1.5 md:flex-row md:items-center md:rounded-[1.6rem]",
         className,
       )}
     >
-      <div className="group relative flex flex-1 items-center px-4 py-1.5 transition-colors hover:bg-surface-elevated sm:px-5 sm:py-2 md:rounded-[1.05rem]">
-        <div className="absolute inset-y-0 left-4 flex items-center sm:left-5">
+      <div className="group relative flex flex-1 items-center rounded-[0.95rem] border border-border/70 bg-surface-elevated/45 px-3.5 py-2 transition-colors hover:bg-surface-elevated sm:px-5 sm:py-2 md:rounded-[1.05rem] md:border-transparent md:bg-transparent md:px-4 md:py-1.5">
+        <div className="absolute inset-y-0 left-3.5 flex items-center sm:left-5 md:left-4">
           <svg className="h-5 w-5 text-text-secondary/70 transition-colors group-hover:text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        <div className="w-full pl-8 sm:pl-9">
-          <label className="block text-[0.6rem] font-bold uppercase tracking-[0.16em] text-text-secondary">Keyword</label>
+        <div className="w-full pl-8 md:pl-8 sm:pl-9">
+          <label className="block text-[0.58rem] font-bold uppercase tracking-[0.16em] text-text-secondary md:text-[0.6rem]">Keyword</label>
           <input
             name="q"
             placeholder="Search make or model"
-            className="mt-0.5 min-w-0 w-full border-none bg-transparent p-0 text-sm font-medium text-text-primary outline-none placeholder:font-medium placeholder:text-text-secondary/70 focus:ring-0"
+            className="mt-0.5 min-w-0 w-full border-none bg-transparent p-0 text-[0.98rem] font-medium text-text-primary outline-none placeholder:font-medium placeholder:text-text-secondary/70 focus:ring-0 md:text-sm"
           />
         </div>
       </div>
 
       <div className="hidden h-8 w-px bg-border md:block" />
 
-      <div className="group relative flex flex-1 cursor-pointer items-center px-4 py-1.5 transition-colors hover:bg-surface-elevated sm:px-5 sm:py-2 md:rounded-[1.05rem]">
+      <div className="group relative flex flex-1 cursor-pointer items-center rounded-[0.95rem] border border-border/70 bg-surface-elevated/45 px-3.5 py-2 transition-colors hover:bg-surface-elevated sm:px-5 sm:py-2 md:rounded-[1.05rem] md:border-transparent md:bg-transparent md:px-4 md:py-1.5">
         <div className="w-full pr-6">
-          <label className="block text-[0.6rem] font-bold uppercase tracking-[0.16em] text-text-secondary">Make</label>
+          <label className="block text-[0.58rem] font-bold uppercase tracking-[0.16em] text-text-secondary md:text-[0.6rem]">Make</label>
           <select
             name="make"
-            className="mt-0.5 w-full cursor-pointer appearance-none border-none bg-transparent p-0 text-sm font-medium text-text-primary outline-none focus:ring-0"
+            className="mt-0.5 w-full cursor-pointer appearance-none border-none bg-transparent p-0 text-[0.98rem] font-medium text-text-primary outline-none focus:ring-0 md:text-sm"
             defaultValue=""
           >
             <option value="">Any Make</option>
@@ -218,7 +218,7 @@ function HeroSearchPanel({
             ))}
           </select>
         </div>
-        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none sm:right-5">
+        <div className="absolute inset-y-0 right-3.5 flex items-center pointer-events-none sm:right-5 md:right-4">
           <svg className="h-4 w-4 text-text-secondary/70 transition-colors group-hover:text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
           </svg>
@@ -227,12 +227,12 @@ function HeroSearchPanel({
 
       <div className="hidden h-8 w-px bg-border md:block" />
 
-      <div className="group relative flex flex-1 cursor-pointer items-center px-4 py-1.5 transition-colors hover:bg-surface-elevated sm:px-5 sm:py-2 md:rounded-[1.05rem]">
+      <div className="group relative flex flex-1 cursor-pointer items-center rounded-[0.95rem] border border-border/70 bg-surface-elevated/45 px-3.5 py-2 transition-colors hover:bg-surface-elevated sm:px-5 sm:py-2 md:rounded-[1.05rem] md:border-transparent md:bg-transparent md:px-4 md:py-1.5">
         <div className="w-full pr-6">
-          <label className="block text-[0.6rem] font-bold uppercase tracking-[0.16em] text-text-secondary">Condition</label>
+          <label className="block text-[0.58rem] font-bold uppercase tracking-[0.16em] text-text-secondary md:text-[0.6rem]">Condition</label>
           <select
             name="category"
-            className="mt-0.5 w-full cursor-pointer appearance-none border-none bg-transparent p-0 text-sm font-medium text-text-primary outline-none focus:ring-0"
+            className="mt-0.5 w-full cursor-pointer appearance-none border-none bg-transparent p-0 text-[0.98rem] font-medium text-text-primary outline-none focus:ring-0 md:text-sm"
             defaultValue=""
           >
             <option value="">Any Condition</option>
@@ -242,17 +242,17 @@ function HeroSearchPanel({
             <option value="traded-in">Traded-in</option>
           </select>
         </div>
-        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none sm:right-5">
+        <div className="absolute inset-y-0 right-3.5 flex items-center pointer-events-none sm:right-5 md:right-4">
           <svg className="h-4 w-4 text-text-secondary/70 transition-colors group-hover:text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
       </div>
 
-      <div className="mt-1.5 w-full px-1 pb-1 md:mt-0 md:w-auto md:px-0 md:pb-0">
+      <div className="w-full md:mt-0 md:w-auto md:px-0 md:pb-0">
         <Button
           type="submit"
-          className="h-9.5 w-full rounded-[0.95rem] bg-accent/94 px-4.5 text-[0.95rem] font-semibold shadow-[0_8px_18px_rgba(23,58,94,0.12)] hover:bg-accent md:h-10 md:w-auto md:min-w-[9.5rem] md:rounded-[1.05rem] md:bg-accent md:px-5 md:text-sm md:shadow-[0_10px_24px_rgba(23,58,94,0.16)]"
+          className="h-10 w-full rounded-[0.95rem] border-[#2C4F73] bg-[#2C4F73] px-4.5 text-[0.95rem] font-semibold text-white shadow-[0_8px_18px_rgba(44,79,115,0.1)] hover:border-[#254667] hover:bg-[#254667] md:h-10 md:w-auto md:min-w-[9.5rem] md:rounded-[1.05rem] md:border-accent md:bg-accent md:px-5 md:text-sm md:shadow-[0_10px_24px_rgba(23,58,94,0.16)]"
         >
           View Matches
         </Button>
@@ -269,7 +269,7 @@ function HeroTrustRow({
   return (
     <div
       className={cn(
-        "inline-flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5 rounded-[1rem] border border-border/80 bg-surface/76 px-3 py-1.5 text-[0.68rem] font-medium text-text-secondary shadow-[0_8px_18px_rgba(28,35,43,0.04)] sm:gap-x-3 sm:gap-y-2 sm:rounded-[1.1rem] sm:px-4 sm:py-2 sm:text-[0.72rem] md:justify-start",
+        "inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-[0.95rem] border border-border/80 bg-surface/76 px-3 py-[0.85rem] text-[0.74rem] font-medium text-text-secondary shadow-[0_8px_18px_rgba(28,35,43,0.04)] sm:gap-x-3 sm:gap-y-2 sm:rounded-[1.1rem] sm:px-4 sm:py-2 sm:text-[0.72rem] md:justify-start",
         className,
       )}
     >
@@ -341,7 +341,7 @@ export default async function Home() {
       <JsonLd data={breadcrumbJsonLd} />
 
       <main className="homepage-flow">
-        <section className="relative flex min-h-[20.75rem] w-full flex-col justify-center overflow-hidden pb-12 pt-7 md:min-h-[29rem] md:pb-5 md:pt-12 lg:min-h-[31rem] lg:pb-6 lg:pt-16">
+        <section className="relative flex min-h-[20.35rem] w-full flex-col justify-center overflow-hidden pb-12 pt-7 md:min-h-[29rem] md:pb-5 md:pt-12 lg:min-h-[31rem] lg:pb-6 lg:pt-16">
           <div className="absolute inset-0 z-0">
             <Image
               src="https://res.cloudinary.com/dlyrnhpcn/image/upload/v1773413283/HERO1_z3ovbz.png"
@@ -349,7 +349,7 @@ export default async function Home() {
               fill
               priority
               quality={75}
-              className="object-cover object-[84%_12%] scale-[1.08] brightness-[0.93] contrast-[1.14] saturate-[0.98] md:object-[77%_33%] md:scale-100 lg:object-[79%_31%]"
+              className="object-cover object-[88%_5%] scale-[1.14] brightness-[0.93] contrast-[1.14] saturate-[0.98] md:object-[77%_33%] md:scale-100 lg:object-[79%_31%]"
               sizes="100vw"
             />
             <div className="absolute inset-0 z-10 bg-[linear-gradient(90deg,rgba(255,255,255,0.94)_0%,rgba(255,255,255,0.8)_40%,rgba(255,255,255,0.2)_70%,rgba(255,255,255,0)_100%)] md:bg-[linear-gradient(94deg,rgba(246,247,248,0.97)_4%,rgba(246,247,248,0.92)_22%,rgba(246,247,248,0.68)_45%,rgba(246,247,248,0.18)_69%,rgba(246,247,248,0.05)_100%)]" />
@@ -372,7 +372,7 @@ export default async function Home() {
               </h1>
 
               <p className="mx-auto hidden max-w-[32rem] text-base leading-7 text-text-secondary md:mx-0 md:block md:max-w-[34rem] md:text-[1rem]">
-                Review inspected stock online first, then visit the showroom or message sales only when a car is worth viewing.
+                Review inspected stock online first, then visit our Mombasa showroom or message sales only when a car is worth viewing.
               </p>
 
               <div className="flex flex-col items-center justify-center gap-3 pt-1 sm:flex-row sm:pt-1.5 md:justify-start">
