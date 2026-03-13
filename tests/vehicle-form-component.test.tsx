@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   cleanupUploadedVehicleImagesAction: vi.fn(),
   router: {
     push: vi.fn(),
+    replace: vi.fn(),
     refresh: vi.fn(),
   },
   saveVehicleAction: vi.fn(),
@@ -81,5 +82,44 @@ describe("VehicleForm", () => {
       "alert",
     );
     expect(mocks.router.push).not.toHaveBeenCalled();
+  });
+
+  it("prevents duplicate saves while a submission is already in flight", async () => {
+    let resolveSave!: (value: {
+      success: boolean;
+      message: string;
+      fieldErrors?: Record<string, string[]>;
+    }) => void;
+    const pendingSave = new Promise<{
+      success: boolean;
+      message: string;
+      fieldErrors?: Record<string, string[]>;
+    }>((resolve) => {
+      resolveSave = resolve;
+    });
+    mocks.saveVehicleAction.mockReturnValue(pendingSave);
+
+    render(<VehicleForm locations={[]} />);
+
+    const saveButton = screen.getByRole("button", { name: /save vehicle/i });
+
+    fireEvent.click(saveButton);
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(mocks.saveVehicleAction).toHaveBeenCalledTimes(1);
+    });
+
+    resolveSave({
+      success: false,
+      message: "Please review the highlighted fields and try again.",
+      fieldErrors: {
+        title: ["Enter a vehicle title."],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Enter a vehicle title.")).toBeInTheDocument();
+    });
   });
 });

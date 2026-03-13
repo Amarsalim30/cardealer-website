@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AdminSession } from "@/types/dealership";
 
-const navItems = [
+const baseNavItems = [
   {
     href: "/admin/vehicles",
     label: "Inventory",
@@ -28,7 +28,17 @@ const navItems = [
   },
 ] as const;
 
+const ownerNavItem = {
+  href: "/admin/admins",
+  label: "Manage admins",
+  description: "Grant or revoke workspace access.",
+} as const;
+
 function getCurrentPageLabel(pathname: string) {
+  if (pathname.startsWith("/admin/admins")) {
+    return "Manage admins";
+  }
+
   if (pathname.startsWith("/admin/leads")) {
     return "Lead inbox";
   }
@@ -102,6 +112,11 @@ function NavigationPanel({
   session: AdminSession;
   onNavigate?: () => void;
 }) {
+  const navItems =
+    session.mode === "supabase" && session.role === "owner"
+      ? [...baseNavItems, ownerNavItem]
+      : baseNavItems;
+
   return (
     <div className="flex h-full flex-col bg-[#f7f9fc] px-4 py-4 lg:border-r lg:border-border/70 lg:bg-[#f4f7fb] lg:px-5 lg:py-6">
       <div className="rounded-[28px] border border-white/80 bg-white px-5 py-5 shadow-[0_18px_42px_rgba(15,23,42,0.06)]">
@@ -122,7 +137,7 @@ function NavigationPanel({
           </p>
           <p className="mt-2 text-sm font-semibold">{session.name}</p>
           <p className="mt-1 text-xs text-stone-400">
-            {session.email} | {session.mode}
+            {session.email} | {session.role} | {session.mode}
           </p>
         </div>
       </div>

@@ -4,8 +4,10 @@ const mocks = vi.hoisted(() => {
   return {
     envState: {
       hasCloudinaryConfig: true,
+      hasSupabaseSecretConfig: true,
     },
     requireAdminSession: vi.fn(),
+    requireOwnerSession: vi.fn(),
     uploadVehicleImageFromUrl: vi.fn(),
     deleteCloudinaryAssets: vi.fn(),
     mapVehicleFormData: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("next/dist/client/components/redirect-error", () => ({
 
 vi.mock("@/lib/auth", () => ({
   requireAdminSession: mocks.requireAdminSession,
+  requireOwnerSession: mocks.requireOwnerSession,
   signInDemoAdmin: vi.fn(),
   signOutAdmin: vi.fn(),
 }));
@@ -40,6 +43,9 @@ vi.mock("@/lib/env", () => ({
   hasSupabaseConfig: true,
   get hasCloudinaryConfig() {
     return mocks.envState.hasCloudinaryConfig;
+  },
+  get hasSupabaseSecretConfig() {
+    return mocks.envState.hasSupabaseSecretConfig;
   },
 }));
 
@@ -105,6 +111,14 @@ describe("saveVehicleAction", () => {
       mode: "supabase",
       email: "admin@example.com",
       name: "Admin",
+      role: "admin",
+    });
+    mocks.requireOwnerSession.mockResolvedValue({
+      mode: "supabase",
+      email: "owner@example.com",
+      name: "Owner",
+      role: "owner",
+      userId: "owner-user-id",
     });
   });
 
@@ -198,6 +212,7 @@ describe("saveVehicleAction", () => {
     mocks.saveVehicle.mockResolvedValue({
       id: "vehicle-created",
       slug: "2020-toyota-prado",
+      updatedAt: "2026-03-14T01:00:00.000Z",
     });
 
     const result = await saveVehicleAction(
@@ -208,7 +223,8 @@ describe("saveVehicleAction", () => {
     expect(result).toEqual({
       success: true,
       message: "Vehicle created successfully.",
-      redirectTo: "/admin/vehicles/vehicle-created?saved=1",
+      redirectTo:
+        "/admin/vehicles/vehicle-created?notice=created&saved=2026-03-14T01%3A00%3A00.000Z",
     });
     expect(mocks.uploadVehicleImageFromUrl).not.toHaveBeenCalled();
     expect(mocks.saveVehicle).toHaveBeenCalledWith(
@@ -244,6 +260,7 @@ describe("saveVehicleAction", () => {
     mocks.saveVehicle.mockResolvedValue({
       id: "vehicle-1",
       slug: "2020-toyota-prado",
+      updatedAt: "2026-03-14T01:05:00.000Z",
     });
 
     const result = await saveVehicleAction(
@@ -254,6 +271,8 @@ describe("saveVehicleAction", () => {
     expect(result).toEqual({
       success: true,
       message: "Vehicle saved successfully.",
+      redirectTo:
+        "/admin/vehicles/vehicle-1?notice=saved&saved=2026-03-14T01%3A05%3A00.000Z",
     });
   });
 

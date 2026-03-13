@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUp, ImagePlus, LoaderCircle, Star, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -157,7 +157,8 @@ export function VehicleForm({
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
-  const [isSubmitting, startSubmitting] = useTransition();
+  const submitLockRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [state, setState] = useState<ActionState>(initialState);
   const [successNotice, setSuccessNotice] = useState(initialNotice || "");
   const [images, setImages] = useState<EditableImage[]>(() =>
@@ -466,13 +467,16 @@ export function VehicleForm({
   }
 
   async function submitVehicleForm() {
-    if (!formRef.current) {
+    if (!formRef.current || submitLockRef.current) {
       return;
     }
 
+    submitLockRef.current = true;
+    setIsSubmitting(true);
     setUploadError("");
     setState(initialState);
     clearSuccessNotice();
+    let shouldUnlock = true;
 
     try {
       const draftIdentifiers = buildVehicleDraftIdentifiers({
@@ -506,7 +510,14 @@ export function VehicleForm({
       const result = await saveVehicleAction(initialState, formData);
 
       if (result.success && result.redirectTo) {
-        router.push(result.redirectTo);
+        shouldUnlock = false;
+
+        if (isEditing) {
+          router.replace(result.redirectTo);
+        } else {
+          router.push(result.redirectTo);
+        }
+
         return;
       }
 
@@ -525,14 +536,17 @@ export function VehicleForm({
           ? error.message
           : "We could not save the vehicle right now.",
       );
+    } finally {
+      if (shouldUnlock) {
+        submitLockRef.current = false;
+        setIsSubmitting(false);
+      }
     }
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    startSubmitting(() => {
-      void submitVehicleForm();
-    });
+    void submitVehicleForm();
   }
 
   function addManualImage() {

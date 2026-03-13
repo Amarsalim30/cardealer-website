@@ -809,35 +809,39 @@ export async function saveVehicle(input: VehicleFormInput, options: WriteOptions
     return nextVehicle;
   }
 
-  const { error: vehicleError } = await serverClient.from("vehicles").upsert({
-    id: nextVehicle.id,
-    title: nextVehicle.title,
-    stock_code: nextVehicle.stockCode,
-    slug: nextVehicle.slug,
-    make: nextVehicle.make,
-    model: nextVehicle.model,
-    year: nextVehicle.year,
-    condition: nextVehicle.condition,
-    price: nextVehicle.price,
-    negotiable: nextVehicle.negotiable,
-    mileage: nextVehicle.mileage,
-    transmission: nextVehicle.transmission,
-    fuel_type: nextVehicle.fuelType,
-    drive_type: nextVehicle.driveType,
-    body_type: nextVehicle.bodyType,
-    engine_capacity: nextVehicle.engineCapacity,
-    color: nextVehicle.color,
-    location_id: nextVehicle.locationId,
-    featured: nextVehicle.featured,
-    status: nextVehicle.status,
-    stock_category: nextVehicle.stockCategory,
-    description: nextVehicle.description,
-    hero_image_url: nextVehicle.heroImageUrl,
-    updated_at: nextVehicle.updatedAt,
-  });
+  const { data: persistedVehicle, error: vehicleError } = await serverClient
+    .from("vehicles")
+    .upsert({
+      id: nextVehicle.id,
+      title: nextVehicle.title,
+      stock_code: nextVehicle.stockCode,
+      slug: nextVehicle.slug,
+      make: nextVehicle.make,
+      model: nextVehicle.model,
+      year: nextVehicle.year,
+      condition: nextVehicle.condition,
+      price: nextVehicle.price,
+      negotiable: nextVehicle.negotiable,
+      mileage: nextVehicle.mileage,
+      transmission: nextVehicle.transmission,
+      fuel_type: nextVehicle.fuelType,
+      drive_type: nextVehicle.driveType,
+      body_type: nextVehicle.bodyType,
+      engine_capacity: nextVehicle.engineCapacity,
+      color: nextVehicle.color,
+      location_id: nextVehicle.locationId,
+      featured: nextVehicle.featured,
+      status: nextVehicle.status,
+      stock_category: nextVehicle.stockCategory,
+      description: nextVehicle.description,
+      hero_image_url: nextVehicle.heroImageUrl,
+      updated_at: nextVehicle.updatedAt,
+    })
+    .select("id")
+    .single();
 
-  if (vehicleError) {
-    throw vehicleError;
+  if (vehicleError || !persistedVehicle) {
+    throw vehicleError || new Error("Vehicle save failed.");
   }
 
   const { error: deleteImagesError } = await serverClient
@@ -1035,13 +1039,15 @@ export async function updateVehicleStatus(
     });
   }
 
-  const { error } = await serverClient
+  const { data: updatedVehicle, error } = await serverClient
     .from("vehicles")
     .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    throw error;
+  if (error || !updatedVehicle) {
+    throw error || new Error("Vehicle status could not be updated.");
   }
 
   return getVehicleById(id, options);
@@ -1073,20 +1079,21 @@ export async function toggleVehicleFeatured(id: string, options: WriteOptions = 
     });
   }
 
-  const { error } = await serverClient
+  const { data: updatedVehicle, error } = await serverClient
     .from("vehicles")
     .update({ featured: nextFeatured, updated_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    throw error;
+  if (error || !updatedVehicle) {
+    throw error || new Error("Vehicle featured state could not be updated.");
   }
 
   return getVehicleById(id, options);
 }
 
 export async function deleteVehicle(id: string, options: WriteOptions = {}) {
-  const existing = await getVehicleById(id, options);
   const serverClient = await createSupabaseServerClient();
 
   if (options.forceDemo || !serverClient) {
@@ -1100,22 +1107,18 @@ export async function deleteVehicle(id: string, options: WriteOptions = {}) {
     return;
   }
 
-  const { error: deleteImagesError } = await serverClient
-    .from("vehicle_images")
-    .delete()
-    .eq("vehicle_id", id);
+  const existingRow = await selectVehicleRowById(serverClient, id);
+  const existing = existingRow ? mapSupabaseVehicleRow(existingRow) : null;
 
-  if (deleteImagesError) {
-    throw deleteImagesError;
-  }
-
-  const { error: deleteVehicleError } = await serverClient
+  const { data: deletedVehicle, error: deleteVehicleError } = await serverClient
     .from("vehicles")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (deleteVehicleError) {
-    throw deleteVehicleError;
+  if (deleteVehicleError || !deletedVehicle) {
+    throw deleteVehicleError || new Error("Vehicle deletion failed.");
   }
 
   if (existing) {

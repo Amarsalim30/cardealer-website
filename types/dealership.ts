@@ -45,6 +45,8 @@ export const leadInboxSourceTypes = [
   "trade_in",
 ] as const;
 
+export const adminRoles = ["owner", "admin"] as const;
+
 export const adminVehicleSortOptions = [
   "updated-desc",
   "price-desc",
@@ -60,6 +62,7 @@ export type LeadWorkflowStatus = (typeof leadWorkflowStatuses)[number];
 export type LeadInboxSourceType = (typeof leadInboxSourceTypes)[number];
 export type LeadInboxStatusFilter = "all" | LeadWorkflowStatus;
 export type AdminVehicleSort = (typeof adminVehicleSortOptions)[number];
+export type AdminRole = (typeof adminRoles)[number];
 
 export interface Location {
   id: string;
@@ -280,7 +283,17 @@ export interface AdminSession {
   mode: "demo" | "supabase";
   email: string;
   name: string;
+  role: AdminRole;
   userId?: string;
+}
+
+export interface AdminProfile {
+  id: string;
+  userId: string;
+  email: string;
+  fullName?: string | null;
+  role: AdminRole;
+  createdAt: string;
 }
 
 export interface VehicleImageInput {

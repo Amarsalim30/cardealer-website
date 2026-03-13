@@ -26,7 +26,15 @@ export default async function AdminEditVehiclePage({
   const session = await requireAdminSession();
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
-  const saved = resolvedSearchParams.saved === "1";
+  const saved =
+    typeof resolvedSearchParams.saved === "string" &&
+    resolvedSearchParams.saved.length > 0;
+  const notice =
+    resolvedSearchParams.notice === "created"
+      ? "Vehicle created successfully."
+      : resolvedSearchParams.notice === "saved"
+        ? "Vehicle saved successfully."
+        : undefined;
   let locations: Awaited<ReturnType<typeof getAdminLocations>> = [];
   let vehicle: Awaited<ReturnType<typeof getVehicleById>> = null;
   let unavailableDescription: string | null = null;
@@ -88,9 +96,10 @@ export default async function AdminEditVehiclePage({
         }
       />
       <VehicleForm
+        key={`${vehicle.id}:${vehicle.updatedAt}:${saved ? "saved" : "editing"}`}
         locations={locations}
         vehicle={vehicle}
-        initialNotice={saved ? "Vehicle created successfully." : undefined}
+        initialNotice={saved ? notice : undefined}
       />
       <CloudinarySyncCard vehicleId={vehicle.id} stockCode={vehicle.stockCode} />
     </div>

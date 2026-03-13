@@ -23,6 +23,7 @@ describe("AdminNavigation", () => {
           email: "admin@example.com",
           mode: "demo",
           name: "Admin",
+          role: "owner",
         }}
       />,
     );
@@ -42,6 +43,7 @@ describe("AdminNavigation", () => {
           email: "admin@example.com",
           mode: "demo",
           name: "Admin",
+          role: "owner",
         }}
       />,
     );
@@ -56,5 +58,37 @@ describe("AdminNavigation", () => {
 
     expect(screen.getByText(/admin navigation/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/close navigation/i)).toBeInTheDocument();
+  });
+
+  it("shows manage admins only for owner sessions backed by Supabase", () => {
+    pathnameMock.mockReturnValue("/admin/vehicles");
+
+    const { rerender } = render(
+      <AdminNavigation
+        session={{
+          email: "owner@example.com",
+          mode: "supabase",
+          name: "Owner",
+          role: "owner",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /manage admins/i })).toBeInTheDocument();
+
+    rerender(
+      <AdminNavigation
+        session={{
+          email: "admin@example.com",
+          mode: "supabase",
+          name: "Admin",
+          role: "admin",
+        }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: /manage admins/i }),
+    ).not.toBeInTheDocument();
   });
 });

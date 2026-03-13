@@ -15,6 +15,7 @@ export interface Database {
           email: string;
           full_name: string | null;
           id: string;
+          role: "admin" | "owner";
           user_id: string;
         };
         Insert: {
@@ -22,6 +23,7 @@ export interface Database {
           email: string;
           full_name?: string | null;
           id?: string;
+          role?: "admin" | "owner";
           user_id: string;
         };
         Update: {
@@ -29,6 +31,7 @@ export interface Database {
           email?: string;
           full_name?: string | null;
           id?: string;
+          role?: "admin" | "owner";
           user_id?: string;
         };
         Relationships: [];
@@ -379,6 +382,12 @@ export interface Database {
     Views: Record<string, never>;
     Functions: {
       is_admin: {
+        Args: {
+          uid: string;
+        };
+        Returns: boolean;
+      };
+      is_owner: {
         Args: {
           uid: string;
         };

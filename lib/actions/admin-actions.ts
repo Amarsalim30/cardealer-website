@@ -3,8 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { requireAdminSession, signInDemoAdmin, signOutAdmin } from "@/lib/auth";
-import { allowDemoAdmin, hasCloudinaryConfig, hasSupabaseConfig } from "@/lib/env";
+import {
+  requireAdminSession,
+  requireOwnerSession,
+  signInDemoAdmin,
+  signOutAdmin,
+} from "@/lib/auth";
+import {
+  allowDemoAdmin,
+  hasCloudinaryConfig,
+  hasSupabaseConfig,
+  hasSupabaseSecretConfig,
+} from "@/lib/env";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   deleteCloudinaryAssets,
@@ -29,6 +40,11 @@ import type {
   LeadWorkflowStatus,
   VehicleFormInput,
 } from "@/types/dealership";
+
+type SupabaseErrorLike = {
+  code?: string;
+  message?: string;
+};
 
 function validationErrorState(error: {
   flatten: () => { fieldErrors: Record<string, string[]> };
@@ -57,6 +73,77 @@ function actionSuccess(message: string, redirectTo?: string) {
 }
 
 class VehicleSaveActionError extends Error {}
+
+function getSupabaseErrorLike(error: unknown): SupabaseErrorLike | null {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  return {
+    code: "code" in error ? String(error.code) : undefined,
+    message: "message" in error ? String(error.message) : undefined,
+  };
+}
+
+function mapVehiclePersistenceFailure(error: unknown) {
+  const supabaseError = getSupabaseErrorLike(error);
+  const message = supabaseError?.message || "";
+
+  if (supabaseError?.code === "23505") {
+    if (message.includes("vehicles_stock_code_key")) {
+      return actionFailure("Another vehicle already uses this stock code.", {
+        stockCode: ["Another vehicle already uses this stock code."],
+      });
+    }
+
+    if (message.includes("vehicles_slug_key")) {
+      return actionFailure("Another vehicle already uses this listing URL.", {
+        title: ["Another vehicle already uses this listing URL."],
+      });
+    }
+  }
+
+  return null;
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+async function findAuthUserByEmail(email: string) {
+  const adminClient = createSupabaseAdminClient();
+
+  if (!adminClient) {
+    return null;
+  }
+
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const match = data.users.find(
+      (user) => user.email?.toLowerCase() === email.toLowerCase(),
+    );
+
+    if (match) {
+      return match;
+    }
+
+    if (!data.nextPage) {
+      return null;
+    }
+
+    page = data.nextPage;
+  }
+}
 
 function parseNewUploadPublicIds(formData: FormData) {
   const raw = String(formData.get("newUploadPublicIdsJson") || "[]");
@@ -300,6 +387,12 @@ export async function saveVehicleAction(
       return actionFailure(error.message);
     }
 
+    const persistenceFailure = mapVehiclePersistenceFailure(error);
+
+    if (persistenceFailure) {
+      return persistenceFailure;
+    }
+
     return actionFailure("We could not save the vehicle right now.");
   }
 
@@ -307,10 +400,13 @@ export async function saveVehicleAction(
   revalidatePath("/admin/vehicles");
   revalidatePath(`/admin/vehicles/${vehicle.id}`);
   return isEditing
-    ? actionSuccess("Vehicle saved successfully.")
+    ? actionSuccess(
+        "Vehicle saved successfully.",
+        `/admin/vehicles/${vehicle.id}?notice=saved&saved=${encodeURIComponent(vehicle.updatedAt)}`,
+      )
     : actionSuccess(
         "Vehicle created successfully.",
-        `/admin/vehicles/${vehicle.id}?saved=1`,
+        `/admin/vehicles/${vehicle.id}?notice=created&saved=${encodeURIComponent(vehicle.updatedAt)}`,
       );
 }
 
@@ -466,4 +562,142 @@ export async function updateLeadInboxStateAction(
       error instanceof Error ? error.message : "Lead status could not be updated.",
     );
   }
+}
+
+export async function createAdminAccessAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const session = await requireOwnerSession();
+
+    if (session.mode !== "supabase") {
+      return actionFailure("Admin management is available only with Supabase auth.");
+    }
+
+    if (!hasSupabaseSecretConfig) {
+      return actionFailure(
+        "Supabase service-role access is required before admins can be managed here.",
+      );
+    }
+
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const fullName = String(formData.get("fullName") || "").trim();
+    const password = String(formData.get("password") || "").trim();
+
+    if (!email || !isValidEmail(email)) {
+      return actionFailure("Enter a valid email address for the admin account.");
+    }
+
+    const adminClient = createSupabaseAdminClient();
+    const serverClient = await createSupabaseServerClient();
+
+    if (!adminClient || !serverClient) {
+      return actionFailure("Supabase admin access is not ready yet.");
+    }
+
+    let authUser = await findAuthUserByEmail(email);
+    let createdNewUser = false;
+
+    if (!authUser) {
+      if (password.length < 8) {
+        return actionFailure(
+          "New admin accounts need a password with at least 8 characters.",
+        );
+      }
+
+      const { data, error } = await adminClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: fullName ? { full_name: fullName } : undefined,
+      });
+
+      if (error || !data.user) {
+        return actionFailure(
+          error?.message || "The admin user could not be created right now.",
+        );
+      }
+
+      authUser = data.user;
+      createdNewUser = true;
+    }
+
+    const { data: existingProfile, error: existingProfileError } = await serverClient
+      .from("admin_profiles")
+      .select("id, role")
+      .eq("user_id", authUser.id)
+      .maybeSingle();
+
+    if (existingProfileError) {
+      throw existingProfileError;
+    }
+
+    if (existingProfile) {
+      return actionFailure(
+        existingProfile.role === "owner"
+          ? "This account already has owner access."
+          : "This account already has admin access.",
+      );
+    }
+
+    const { error: insertError } = await serverClient.from("admin_profiles").insert({
+      user_id: authUser.id,
+      email,
+      full_name:
+        fullName ||
+        (typeof authUser.user_metadata?.full_name === "string"
+          ? authUser.user_metadata.full_name
+          : null),
+      role: "admin",
+    });
+
+    if (insertError) {
+      if (createdNewUser) {
+        await adminClient.auth.admin.deleteUser(authUser.id).catch(() => undefined);
+      }
+
+      throw insertError;
+    }
+
+    revalidatePath("/admin/admins");
+    return actionSuccess("Admin access granted.");
+  } catch (error) {
+    return actionFailure(
+      error instanceof Error ? error.message : "Admin access could not be added.",
+    );
+  }
+}
+
+export async function removeAdminAccessAction(formData: FormData) {
+  const session = await requireOwnerSession();
+
+  if (session.mode !== "supabase") {
+    return;
+  }
+
+  const userId = String(formData.get("userId") || "").trim();
+
+  if (!userId || !session.userId || userId === session.userId) {
+    return;
+  }
+
+  const serverClient = await createSupabaseServerClient();
+
+  if (!serverClient) {
+    return;
+  }
+
+  const { data: profile } = await serverClient
+    .from("admin_profiles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!profile || profile.role === "owner") {
+    return;
+  }
+
+  await serverClient.from("admin_profiles").delete().eq("user_id", userId);
+  revalidatePath("/admin/admins");
 }

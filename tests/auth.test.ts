@@ -78,6 +78,7 @@ describe("demo admin auth", () => {
       mode: "demo",
       email: "demo@example.com",
       name: "Demo Admin",
+      role: "owner",
     });
   });
 
