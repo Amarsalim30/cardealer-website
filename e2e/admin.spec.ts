@@ -111,3 +111,34 @@ test("lead inbox remains usable on mobile without falling back to a table", asyn
   await expect(page.locator("table")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /call/i }).first()).toBeVisible();
 });
+
+test("inventory workspace supports compact filters, selection, and reset", async ({
+  page,
+}) => {
+  await loginAsDemoAdmin(page);
+
+  await page.getByLabel("Fuel").selectOption({ label: "Petrol" });
+  await page.getByRole("button", { name: /^apply$/i }).click();
+  await expect(page).toHaveURL(/fuelType=Petrol/);
+
+  await page.getByLabel("Select all visible rows").check();
+  await expect(page.getByText(/selected/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Publish" }).click();
+  await expect(page.getByText(/vehicle/)).toBeVisible();
+
+  await page.getByLabel("Search").fill("no-match-filter");
+  await page.getByRole("button", { name: /^apply$/i }).click();
+  await expect(page.getByText(/no vehicles match current filters/i)).toBeVisible();
+  await page.getByRole("link", { name: /reset filters/i }).click();
+  await expect(page).toHaveURL(/\/admin\/vehicles$/);
+});
+
+test("inventory remains usable on mobile with compact rows", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsDemoAdmin(page);
+  await page.goto("/admin/vehicles");
+
+  await expect(page.locator("table")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /edit/i }).first()).toBeVisible();
+});
