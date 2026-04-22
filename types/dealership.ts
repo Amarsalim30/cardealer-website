@@ -324,7 +324,7 @@ export interface AdminVehicleWorkspaceQuery {
   status?: VehicleStatus | "all";
   category?: StockCategory | "all";
   featured?: "all" | "featured" | "standard";
-  location?: string;
+  fuelType?: string;
   sort?: AdminVehicleSort;
 }
 
@@ -339,6 +339,7 @@ export interface AdminVehicleWorkspaceResult {
   items: Vehicle[];
   filters: Required<AdminVehicleWorkspaceQuery>;
   locations: Array<Pick<Location, "id" | "name">>;
+  fuelTypes: string[];
   summary: AdminVehicleWorkspaceSummary;
 }
 

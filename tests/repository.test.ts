@@ -189,7 +189,7 @@ describe("repository fail-closed behavior", () => {
             negotiable: false,
             mileage: 62000,
             transmission: "Automatic",
-            fuelType: "Petrol",
+            fuelType: "Diesel",
             driveType: null,
             bodyType: "SUV",
             engineCapacity: null,
@@ -224,6 +224,7 @@ describe("repository fail-closed behavior", () => {
       q: "corolla",
       featured: "featured",
       status: "published",
+      fuelType: "Petrol",
     });
 
     expect(result.items).toHaveLength(1);
@@ -234,5 +235,6 @@ describe("repository fail-closed behavior", () => {
       draft: 1,
       sold: 0,
     });
+    expect(result.fuelTypes).toEqual(["Diesel", "Petrol"]);
   });
 });

@@ -678,7 +678,7 @@ function normalizeAdminVehicleWorkspaceQuery(
     status: query.status || "all",
     category: query.category || "all",
     featured: query.featured || "all",
-    location: query.location || "",
+    fuelType: query.fuelType || "",
     sort: query.sort || "updated-desc",
   } satisfies Required<AdminVehicleWorkspaceQuery>;
 }
@@ -710,7 +710,7 @@ function matchesAdminVehicleWorkspaceQuery(
     return false;
   }
 
-  if (filters.location && vehicle.locationId !== filters.location) {
+  if (filters.fuelType && vehicle.fuelType !== filters.fuelType) {
     return false;
   }
 
@@ -761,6 +761,9 @@ export async function getAdminVehicleWorkspace(
         id: location.id,
         name: location.name,
       })),
+    fuelTypes: [...new Set(vehicles.map((vehicle) => vehicle.fuelType))]
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right)),
     summary: {
       total: vehicles.length,
       published: vehicles.filter((vehicle) => vehicle.status === "published").length,
