@@ -13,16 +13,16 @@ export function SpecGrid({ vehicle }: { vehicle: Vehicle }) {
   ];
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
+    <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
       {specs.map((spec) => (
         <div
           key={spec.label}
-          className="rounded-3xl border border-border bg-surface-elevated px-5 py-4"
+          className="rounded-[20px] border border-border/80 bg-[linear-gradient(180deg,_rgba(249,251,252,0.98),_rgba(241,244,247,0.94))] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]"
         >
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-text-secondary">
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
             {spec.label}
           </p>
-          <p className="mt-2 text-lg font-semibold tracking-[-0.02em] text-text-primary">
+          <p className="mt-1.5 text-[0.98rem] font-semibold tracking-[-0.03em] text-text-primary">
             {spec.value}
           </p>
         </div>

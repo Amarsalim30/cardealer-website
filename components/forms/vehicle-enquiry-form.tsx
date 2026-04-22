@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Phone } from "lucide-react";
 import { useActionState, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -85,6 +86,11 @@ export function VehicleEnquiryForm({
   phoneHref,
   phoneDisplay,
   whatsappUrl,
+  primaryHref,
+  primaryLabel,
+  trustItems,
+  tradeInHref,
+  compact = false,
 }: {
   vehicleId?: string;
   vehicleTitle?: string;
@@ -92,6 +98,11 @@ export function VehicleEnquiryForm({
   phoneHref?: string;
   phoneDisplay?: string;
   whatsappUrl?: string;
+  primaryHref?: string;
+  primaryLabel?: string;
+  trustItems?: Array<{ label: string; value: string }>;
+  tradeInHref?: string;
+  compact?: boolean;
 }) {
   const searchParams = useSearchParams();
   const [intent, setIntent] = useState<VehicleIntent>(() =>
@@ -118,23 +129,90 @@ export function VehicleEnquiryForm({
   const messageField = getActionFieldState(state, formId, "message");
 
   return (
-    <Card className="rounded-[28px] p-5 lg:p-6">
-      <div className="mb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-text-secondary">
+    <Card
+      className={cn(
+        "border border-border/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,249,251,0.94))] shadow-[0_18px_50px_rgba(15,23,42,0.06)]",
+        compact ? "rounded-[28px] p-4 lg:p-5" : "rounded-[32px] p-5 lg:p-6",
+      )}
+    >
+      <div className={cn(compact ? "mb-3" : "mb-4")}>
+        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-text-secondary">
           Talk to sales
         </p>
-        <h3 className="mt-3 text-2xl font-semibold text-text-primary">
+        <h3
+          className={cn(
+            "font-semibold text-text-primary",
+            compact
+              ? "mt-1.5 text-[1.35rem] leading-tight tracking-[-0.035em]"
+              : "mt-2 text-[1.7rem] leading-tight tracking-[-0.04em]",
+          )}
+        >
           Ask about this vehicle
         </h3>
-        <p className="mt-2 max-w-[38ch] text-sm leading-6 text-text-secondary">
+        <p
+          className={cn(
+            "mt-2 max-w-[38ch] text-text-secondary",
+            compact ? "text-[0.92rem] leading-5" : "text-sm leading-6",
+          )}
+        >
           Call, WhatsApp, or send one short message and the team will follow up.
         </p>
       </div>
 
-      {phoneHref || whatsappUrl ? (
-        <div className="mb-5 grid gap-2.5 sm:grid-cols-2">
+      {trustItems?.length ? (
+        <div
+          className={cn(
+            "grid gap-1.5",
+            trustItems.length === 3 ? "grid-cols-3" : "grid-cols-2",
+            compact ? "mb-3" : "mb-4",
+          )}
+        >
+          {trustItems.map((item) => (
+            <div
+              key={item.label}
+              className={cn(
+                "rounded-[16px] border border-border/80 bg-white/88 px-3 py-2.5",
+                compact ? "text-center" : "",
+              )}
+            >
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                {item.label}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-text-primary">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {primaryHref || phoneHref || whatsappUrl ? (
+        <div
+          className={cn(
+            "grid",
+            primaryHref && primaryLabel ? "gap-1.5" : compact ? "sm:grid-cols-2 gap-1.5" : "sm:grid-cols-2 gap-2",
+            compact ? "mb-3" : "mb-4",
+          )}
+        >
+          {primaryHref && primaryLabel ? (
+            <Button
+              asChild
+              variant="primary"
+              size={compact ? "sm" : undefined}
+              className={cn("w-full", compact ? "rounded-[18px]" : "rounded-2xl")}
+            >
+              <Link href={primaryHref}>{primaryLabel}</Link>
+            </Button>
+          ) : null}
+
+          <div className={cn("grid sm:grid-cols-2", compact ? "gap-1.5" : "gap-2")}>
           {phoneHref && phoneDisplay ? (
-            <Button asChild variant="secondary" className="w-full">
+            <Button
+              asChild
+              variant="secondary"
+              size={compact ? "sm" : undefined}
+              className={cn("w-full", compact ? "rounded-[18px]" : "rounded-2xl")}
+            >
               <a href={phoneHref}>
                 <Phone className="size-4" />
                 Call {phoneDisplay}
@@ -142,17 +220,34 @@ export function VehicleEnquiryForm({
             </Button>
           ) : null}
           {whatsappUrl ? (
-            <Button asChild variant="whatsapp" className="w-full">
+            <Button
+              asChild
+              variant="whatsapp"
+              size={compact ? "sm" : undefined}
+              className={cn("w-full", compact ? "rounded-[18px]" : "rounded-2xl")}
+            >
               <a href={whatsappUrl} target="_blank" rel="noreferrer">
                 <WhatsAppIcon className="size-4" />
                 WhatsApp Sales
               </a>
             </Button>
           ) : null}
+          </div>
         </div>
       ) : null}
 
-      <div className="rounded-[22px] border border-border bg-surface-elevated p-1">
+      {tradeInHref ? (
+        <div className={cn(compact ? "mb-3" : "mb-4")}>
+          <Link
+            href={tradeInHref}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-text-secondary transition-colors hover:text-accent"
+          >
+            Value your trade-in
+          </Link>
+        </div>
+      ) : null}
+
+      <div className={cn("border border-border/80 bg-surface-elevated/90 p-1", compact ? "rounded-[20px]" : "rounded-[24px]")}>
         <div className="grid gap-1.5 sm:grid-cols-3">
           {(Object.entries(intentMeta) as Array<
             [VehicleIntent, (typeof intentMeta)[VehicleIntent]]
@@ -163,10 +258,11 @@ export function VehicleEnquiryForm({
               onClick={() => setIntent(key)}
               aria-pressed={intent === key}
               className={cn(
-                "rounded-[18px] border px-3.5 py-2.5 text-left transition-all",
+                "border text-left transition-all",
+                compact ? "rounded-[16px] px-3 py-2" : "rounded-[18px] px-3.5 py-2.5",
                 intent === key
-                  ? "border-accent bg-surface text-text-primary shadow-[0_10px_22px_rgba(23,58,94,0.08)] ring-1 ring-accent/10"
-                  : "border-transparent bg-transparent text-text-secondary hover:bg-surface hover:text-text-primary",
+                  ? "border-accent bg-white text-text-primary shadow-[0_10px_22px_rgba(23,58,94,0.08)] ring-1 ring-accent/10"
+                  : "border-transparent bg-transparent text-text-secondary hover:bg-white/90 hover:text-text-primary",
               )}
             >
               <span className="block text-sm font-semibold">{item.label}</span>
@@ -175,16 +271,21 @@ export function VehicleEnquiryForm({
         </div>
       </div>
 
-      <div className="mt-5 border-t border-border pt-5">
-        <h4 className="text-lg font-semibold text-text-primary">
+      <div className={cn("border-t border-border/80", compact ? "mt-3 pt-3" : "mt-4 pt-4")}>
+        <h4
+          className={cn(
+            "font-semibold tracking-[-0.02em] text-text-primary",
+            compact ? "text-base" : "text-[1.05rem]",
+          )}
+        >
           {activeIntent.title}
         </h4>
-        <p className="mt-2 text-sm leading-6 text-text-secondary">
+        <p className={cn("mt-2 text-text-secondary", compact ? "text-[0.92rem] leading-5" : "text-sm leading-6")}>
           {activeIntent.description}
         </p>
 
         {intent === "viewing" ? (
-          <form action={testDriveAction} className="mt-5 space-y-3">
+          <form action={testDriveAction} className={cn(compact ? "mt-3 space-y-2.5" : "mt-4 space-y-3")}>
             <input type="hidden" name="vehicleId" value={vehicleId || ""} />
             <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
             <input type="hidden" name="source" value={`${source} - viewing`} />
@@ -263,7 +364,7 @@ export function VehicleEnquiryForm({
                 id={`${formId}-message`}
                 name="message"
                 placeholder={activeIntent.messagePlaceholder}
-                className="min-h-24"
+                className={cn("rounded-2xl", compact ? "min-h-20" : "min-h-24")}
                 {...messageField.inputProps}
               />
               <FieldError id={messageField.errorId} error={messageField.error} />
@@ -286,7 +387,7 @@ export function VehicleEnquiryForm({
             </SubmitButton>
           </form>
         ) : (
-          <form action={leadAction} className="mt-5 space-y-3">
+          <form action={leadAction} className={cn(compact ? "mt-3 space-y-2.5" : "mt-4 space-y-3")}>
             <input type="hidden" name="vehicleId" value={vehicleId || ""} />
             <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
             <input type="hidden" name="leadType" value={activeIntent.leadType} />
@@ -324,7 +425,7 @@ export function VehicleEnquiryForm({
                 id={`${formId}-message`}
                 name="message"
                 placeholder={activeIntent.messagePlaceholder}
-                className="min-h-24"
+                className={cn("rounded-2xl", compact ? "min-h-20" : "min-h-24")}
                 {...messageField.inputProps}
               />
               <FieldError id={messageField.errorId} error={messageField.error} />

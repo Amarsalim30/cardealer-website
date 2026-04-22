@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Phone } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  Clock3,
+  MapPin,
+  Ticket,
+} from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/layout/json-ld";
@@ -12,8 +18,7 @@ import { VehicleGallery } from "@/components/inventory/vehicle-gallery";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { WhatsAppIcon } from "@/components/ui/whatsapp-icon";
-import { siteConfig } from "@/lib/config/site";
+import { homeStats, siteConfig } from "@/lib/config/site";
 import {
   getSimilarVehicles,
   getVehicleBySlug,
@@ -24,6 +29,7 @@ import {
   buildVehicleJsonLd,
 } from "@/lib/seo";
 import {
+  cn,
   buildWhatsAppUrl,
   formatCurrency,
   formatMileage,
@@ -34,13 +40,13 @@ import {
    Helper builders (kept mostly as-is)
    ------------------------- */
 
-function buildSummarySpecs(
+function buildEssentialDetails(
   vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
 ) {
   return [
     {
-      label: "Mileage",
-      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
+      label: "Year",
+      value: String(vehicle.year),
     },
     {
       label: "Transmission",
@@ -50,48 +56,132 @@ function buildSummarySpecs(
       label: "Fuel",
       value: vehicle.fuelType,
     },
+    {
+      label: "Mileage",
+      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
+    },
+    {
+      label: "Drive",
+      value: vehicle.driveType || "On request",
+    },
+    {
+      label: "Body",
+      value: vehicle.bodyType || "On request",
+    },
+    {
+      label: "Condition",
+      value: vehicle.condition || "On request",
+    },
   ];
 }
 
-function buildBuyerSummary(
+function roundToNearest(value: number, unit: number) {
+  return Math.round(value / unit) * unit;
+}
+
+function buildFinanceEstimate(price: number) {
+  const depositRate = 0.3;
+  const termMonths = 24;
+  const deposit = roundToNearest(price * depositRate, 1000);
+  const monthly = roundToNearest((price - deposit) / termMonths, 1000);
+
+  return {
+    deposit,
+    monthly,
+    depositRate,
+    termMonths,
+  };
+}
+
+function buildLeadSummary(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+  photoCount: number,
+) {
+  const city = vehicle.location?.city || "Mombasa";
+  const mileage =
+    vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "mileage on request";
+  const condition = vehicle.condition?.toLowerCase() || "clean presentation";
+  const gearbox = vehicle.transmission.toLowerCase();
+  const fuel = vehicle.fuelType.toLowerCase();
+  const photoText = photoCount
+    ? `${photoCount} listing photo${photoCount === 1 ? "" : "s"}`
+    : "direct WhatsApp follow-up";
+
+  return `${vehicle.year} ${vehicle.make} ${vehicle.model} is listed in ${city} with ${mileage}, ${gearbox} ${fuel} running, and ${condition} presentation. ${photoText} help buyers shortlist with clearer confidence before they travel for viewing.`;
+}
+
+function buildBuyerHighlights(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+) {
+  return [
+    vehicle.fuelType.toLowerCase() === "diesel"
+      ? "Diesel running suits buyers doing longer highway, coastal, or upcountry mileage."
+      : `${vehicle.fuelType} running keeps daily driving straightforward for town use and weekend travel.`,
+    vehicle.bodyType && /suv|pickup/i.test(vehicle.bodyType)
+      ? `${vehicle.bodyType} shape gives the road presence and practicality many Kenyan family buyers look for.`
+      : vehicle.bodyType
+        ? `${vehicle.bodyType} body style keeps the car practical for daily driving and easier parking.`
+        : null,
+    vehicle.driveType && /awd|4wd|4x4/i.test(vehicle.driveType)
+      ? `${vehicle.driveType} setup adds confidence for mixed road conditions and wet-weather driving.`
+      : vehicle.transmission === "Automatic"
+        ? "Automatic transmission helps with traffic and everyday driving comfort."
+        : `${vehicle.transmission} transmission suits buyers who prefer direct control and simple running.`,
+    vehicle.condition
+      ? `${vehicle.condition} condition note gives a clearer expectation before viewing.`
+      : null,
+    "Finance and trade-in guidance can start before a physical visit, so buyers get clarity earlier.",
+  ].filter((value): value is string => Boolean(value));
+}
+
+function buildFeaturePills(
   vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
   photoCount: number,
 ) {
   return [
-    vehicle.condition
-      ? `Presented as ${vehicle.condition}.`
-      : "Condition details are available on request.",
-    photoCount
-      ? `${photoCount} photo${photoCount === 1 ? "" : "s"} included so you can review the car before speaking to sales.`
-      : "Fresh photos can be shared directly on WhatsApp while the gallery is being updated.",
-    `Available for viewing at ${vehicle.location?.name || "our Mombasa showroom"}.`,
-    vehicle.negotiable
-      ? "There is room for a serious offer after viewing."
-      : "Ask sales for the best next step on price or payment.",
-    `Quote ref ${vehicle.stockCode} when you call or message for faster help.`,
-  ];
+    vehicle.transmission ? `${vehicle.transmission} drive` : null,
+    vehicle.fuelType ? `${vehicle.fuelType} running` : null,
+    vehicle.driveType ? `${vehicle.driveType} road setup` : null,
+    vehicle.bodyType ? `${vehicle.bodyType} body style` : null,
+    vehicle.engineCapacity ? `${vehicle.engineCapacity} engine` : null,
+    photoCount ? `${photoCount} listing photos` : "Fresh photos on request",
+  ].filter((value): value is string => Boolean(value));
 }
 
-function buildOverviewHighlights(
-  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
-) {
-  return [
-    vehicle.bodyType
-      ? `${vehicle.bodyType} comfort with ${vehicle.transmission === "Automatic"
-        ? "easy automatic driving"
-        : `${vehicle.transmission.toLowerCase()} control`
-      }.`
-      : `${vehicle.transmission === "Automatic"
-        ? "Easy automatic driving"
-        : `${vehicle.transmission} drive`
-      } with ${vehicle.fuelType.toLowerCase()} power.`,
-    vehicle.engineCapacity
-      ? `Strong ${vehicle.engineCapacity} power for confident town driving and longer trips.`
-      : `${vehicle.fuelType} power for buyers who want an easy everyday drive.`,
-    vehicle.mileage > 0 ? `Shown at ${formatMileage(vehicle.mileage)} on the listing.` : null,
-    vehicle.condition ? `Presented as ${vehicle.condition}.` : null,
-    `Available for viewing at ${vehicle.location?.name || "our Mombasa showroom"}.`,
-  ].filter((value): value is string => Boolean(value));
+function buildDescriptionCopy(description?: string | null) {
+  const fallback =
+    "Contact sales for the latest condition notes, extra photos, and viewing guidance before you travel.";
+  const normalized = description?.trim() || fallback;
+
+  if (normalized.length <= 220) {
+    return { preview: normalized, remainder: "" };
+  }
+
+  const sentences = normalized.split(/(?<=[.!?])\s+/).filter(Boolean);
+
+  if (sentences.length > 1) {
+    let preview = sentences[0];
+    let index = 1;
+
+    while (
+      index < sentences.length &&
+      preview.length < 220 &&
+      preview.length + sentences[index].length + 1 <= 290
+    ) {
+      preview = `${preview} ${sentences[index]}`;
+      index += 1;
+    }
+
+    return {
+      preview,
+      remainder: sentences.slice(index).join(" "),
+    };
+  }
+
+  return {
+    preview: `${normalized.slice(0, 220).trimEnd()}...`,
+    remainder: normalized.slice(220).trimStart(),
+  };
 }
 
 function buildDetailBadges(
@@ -124,6 +214,11 @@ function buildDetailBadges(
       }
       : null,
     {
+      label: "Verified listing",
+      variant: "success" as const,
+      className: "",
+    },
+    {
       label: stockLabel,
       variant: "muted" as const,
       className: "",
@@ -133,9 +228,104 @@ function buildDetailBadges(
       value,
     ): value is {
       label: string;
-      variant: "default" | "muted";
+      variant: "default" | "muted" | "success";
       className: string;
     } => Boolean(value),
+  );
+}
+
+function buildConfidenceStats(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+  photoCount: number,
+) {
+  return [
+    {
+      icon: Camera,
+      label: "Gallery",
+      value: photoCount
+        ? `${photoCount} photo${photoCount === 1 ? "" : "s"}`
+        : "Photos on request",
+      detail: photoCount
+        ? "Enough detail to review before you call."
+        : "Fresh photos are available on request.",
+    },
+    {
+      icon: MapPin,
+      label: "Viewing",
+      value: vehicle.location?.name || "Mombasa showroom",
+      detail: "Confirm timing before you leave home.",
+    },
+    {
+      icon: Ticket,
+      label: "Reference",
+      value: vehicle.stockCode,
+      detail: "Quote this code for faster follow-up.",
+    },
+  ];
+}
+
+function VehicleDescriptionSection({
+  description,
+  featurePills,
+  className,
+}: {
+  description?: string | null;
+  featurePills: string[];
+  className?: string;
+}) {
+  const descriptionCopy = buildDescriptionCopy(description);
+
+  return (
+    <section
+      className={cn(
+        "rounded-[24px] border border-border/80 bg-[linear-gradient(180deg,_rgba(249,251,252,0.96),_rgba(244,247,251,0.92))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] sm:px-5",
+        className,
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+            Description
+          </p>
+          <h2 className="mt-1 text-[1.2rem] font-semibold leading-tight tracking-[-0.04em] text-text-primary">
+            What buyers should know first
+          </h2>
+        </div>
+        <Link
+          href="#contact-panel"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition-colors hover:text-accent-hover"
+        >
+          Ask about this vehicle
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+
+      <p className="mt-3 text-sm leading-6 text-text-secondary">
+        {descriptionCopy.preview}
+      </p>
+
+      {descriptionCopy.remainder ? (
+        <details className="mt-3 text-sm text-text-secondary">
+          <summary className="cursor-pointer list-none font-semibold text-text-primary [&::-webkit-details-marker]:hidden">
+            Read full description
+          </summary>
+          <p className="mt-3 leading-6">{descriptionCopy.remainder}</p>
+        </details>
+      ) : null}
+
+      {featurePills.length ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {featurePills.map((item) => (
+            <span
+              key={item}
+              className="inline-flex rounded-full border border-border/80 bg-white/90 px-3 py-1.5 text-[0.8rem] font-medium text-text-primary shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
+            >
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -197,12 +387,14 @@ export default async function VehicleDetailPage({
     siteConfig.whatsappNumber,
   );
   const photoCount = vehicle.images.length || (vehicle.heroImageUrl ? 1 : 0);
-  const summarySpecs = buildSummarySpecs(vehicle);
-  const buyerSummary = buildBuyerSummary(vehicle, photoCount);
-  const buyerHighlights = buyerSummary.slice(0, 4);
-  const overviewHighlights = buildOverviewHighlights(vehicle);
+  const essentialDetails = buildEssentialDetails(vehicle);
+  const leadSummary = buildLeadSummary(vehicle, photoCount);
+  const buyerHighlights = buildBuyerHighlights(vehicle);
+  const featurePills = buildFeaturePills(vehicle, photoCount);
   const detailBadges = buildDetailBadges(vehicle);
-  const baseVehiclePath = `/cars/${vehicle.slug}`;
+  const confidenceStats = buildConfidenceStats(vehicle, photoCount);
+  const financeEstimate = buildFinanceEstimate(vehicle.price);
+  const vehiclePath = `/cars/${vehicle.slug}`;
 
   // quick destructure for cleaner markup
   const {
@@ -222,178 +414,205 @@ export default async function VehicleDetailPage({
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={vehicleJsonLd} />
 
-      <main className="section-shell pb-24">
-        <div className="container-shell space-y-8">
+      <main className="section-shell pb-24 pt-6 sm:pt-8">
+        <div className="container-shell space-y-5">
           {/* Visible breadcrumb */}
           <nav aria-label="Breadcrumb" className="text-sm">
-            <ol className="flex flex-wrap items-center gap-2 text-text-secondary">
+            <ol className="flex flex-wrap items-center gap-2 text-[0.82rem] text-text-secondary">
               <li>
-                <Link href="/" className="hover:text-accent">Home</Link>
+                <Link href="/" className="transition-colors hover:text-accent">Home</Link>
               </li>
               <li aria-hidden="true">/</li>
               <li>
-                <Link href="/inventory" className="hover:text-accent">Inventory</Link>
+                <Link href="/inventory" className="transition-colors hover:text-accent">Inventory</Link>
               </li>
               <li aria-hidden="true">/</li>
-              <li aria-current="page" className="text-text-primary font-semibold">{title}</li>
+              <li
+                aria-current="page"
+                className="max-w-[20rem] truncate font-semibold text-text-primary"
+              >
+                {title}
+              </li>
             </ol>
           </nav>
 
-          {/* Top area: gallery + sticky aside */}
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-            <article className="min-w-0">
-              <VehicleGallery
-                key={id}
-                images={images}
-                heroImageUrl={heroImageUrl}
-                title={title}
-              />
+          <section className="overflow-hidden rounded-[30px] border border-white/70 bg-[linear-gradient(145deg,_rgba(255,255,255,0.96),_rgba(244,247,251,0.98))] p-3 shadow-[0_24px_70px_rgba(15,23,42,0.08)] sm:p-4 lg:p-5">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_360px] xl:items-start">
+              <div className="min-w-0 space-y-4">
+                <VehicleGallery
+                  key={id}
+                  images={images}
+                  heroImageUrl={heroImageUrl}
+                  title={title}
+                  compact
+                />
+                <VehicleDescriptionSection
+                  description={description}
+                  featurePills={featurePills}
+                  className="hidden xl:block"
+                />
+              </div>
 
-              {/* Title + quick facts */}
-              <header className="mt-5">
-                <h1 className="text-[2rem] font-semibold leading-tight tracking-tight text-text-primary break-words sm:text-[2.35rem] lg:text-[2.6rem]">
-                  {title}
-                </h1>
+              <div className="min-w-0 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {detailBadges.map((badge) => (
+                    <Badge key={badge.label} variant={badge.variant} className={badge.className}>
+                      {badge.label}
+                    </Badge>
+                  ))}
+                  <Badge variant="accent">Available now</Badge>
+                </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-[0.9rem] text-text-secondary">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-surface-elevated px-3 py-1.5">
-                    <MapPin className="size-[1.05rem] text-text-secondary/70" aria-hidden />
+                <div className="space-y-3">
+                  <h1 className="max-w-[14ch] text-balance text-[clamp(2rem,4vw,3.15rem)] font-semibold leading-[0.98] tracking-[-0.05em] text-text-primary">
+                    {title}
+                  </h1>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <p className="text-[clamp(1.8rem,3vw,2.5rem)] font-semibold leading-none tracking-[-0.05em] text-accent">
+                      {formatCurrency(price)}
+                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                      Ref {stockCode}
+                    </p>
+                  </div>
+                  <p className="text-sm leading-6 text-text-secondary">
+                    {leadSummary}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-[0.84rem] text-text-secondary">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-3 py-1.5 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <MapPin className="size-3.5 text-text-secondary/70" aria-hidden />
                     <span>{location?.name || "Mombasa showroom"}</span>
                   </div>
-
-                  <span className="rounded-full border border-border bg-surface px-3 py-1.5 text-[0.72rem] font-bold uppercase tracking-[0.14em]">
-                    Ref {stockCode}
-                  </span>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/92 px-3 py-1.5 shadow-[0_8px_18px_rgba(15,23,42,0.04)]">
+                    <Clock3 className="size-3.5 text-text-secondary/70" aria-hidden />
+                    <span>Usually replies in {homeStats.responseTime}</span>
+                  </div>
                 </div>
 
-                {/* Key facts (quick scannable row) */}
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  {summarySpecs.map((spec) => (
-                    <div key={spec.label} className="flex-shrink-0 rounded-md border border-border/80 bg-[#FBFCFD] px-3 py-2">
-                      <p className="text-[0.64rem] font-semibold uppercase tracking-[0.12em] text-text-secondary">
-                        {spec.label}
-                      </p>
-                      <p className="mt-1 text-[0.95rem] font-bold text-text-primary">{spec.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </header>
-
-              {/* Description & full specs */}
-              <section id="description" className="mt-8 space-y-6">
-                <Card className="rounded-[24px] p-6">
-                  <h2 className="text-lg font-semibold text-text-primary">Overview</h2>
-                  <p className="mt-3 text-sm leading-7 text-text-secondary">
-                    {description || "No description provided. Contact sales for more details."}
+                <Card className="rounded-[26px] border border-border/80 p-4 lg:p-5">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                    Quick vehicle facts
                   </p>
-
-                  <div className="mt-6">
-                    <h3 className="text-sm font-semibold text-text-primary">Full specification</h3>
-                    <div className="mt-3">
-                      <SpecGrid vehicle={vehicle} />
-                    </div>
-                  </div>
-                </Card>
-              </section>
-            </article>
-
-            {/* Aside - price + CTAs + highlights (sticky on desktop) */}
-            <aside className="min-w-0 lg:sticky lg:top-28 lg:self-start">
-              <Card className="rounded-[24px] p-6 lg:p-7">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[0.75rem] font-bold uppercase tracking-[0.14em] text-text-secondary">Price</p>
-                    <div className="mt-1">
-                      <p className="text-[clamp(1.6rem,6vw,2.6rem)] font-extrabold leading-tight text-accent">
-                        {formatCurrency(price)}
-                      </p>
-                    </div>
-                    <p className="mt-2 text-xs text-text-secondary">Contact us for the best available offer and finance options.</p>
-                  </div>
-                </div>
-
-                {/* CTAs */}
-                <div className="mt-6 grid gap-3">
-                  <Button
-                    asChild
-                    variant="whatsapp"
-                    size="lg"
-                    className="h-12 w-full rounded-2xl text-base font-bold"
-                    aria-label={`Message about ${title} on WhatsApp`}
-                  >
-                    <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                      <WhatsAppIcon className="mr-2 size-[1.05rem]" aria-hidden />
-                      Message on WhatsApp
-                    </a>
-                  </Button>
-
-                  <Button
-                    asChild
-                    variant="secondary"
-                    className="h-12 w-full rounded-2xl text-base font-semibold"
-                    aria-label={`Call about ${title}`}
-                  >
-                    <a href={siteConfig.phoneHref}>
-                      <Phone className="mr-2 size-[1rem]" aria-hidden />
-                      Call About This Car
-                    </a>
-                  </Button>
-
-                  <div className="mt-1 flex flex-wrap items-center justify-center gap-3 px-2 text-[0.875rem] font-medium text-text-secondary">
-                    <Link
-                      href={`${baseVehiclePath}?intent=viewing#contact-panel`}
-                      className="transition-colors hover:text-accent"
-                      aria-label="Book a visit or test drive"
-                    >
-                      Book a Visit / Test Drive
-                    </Link>
-
-                    <span className="hidden h-1 w-1 rounded-full bg-border md:inline-block" />
-
-                    <Link
-                      href={`${baseVehiclePath}?intent=financing#contact-panel`}
-                      className="transition-colors hover:text-accent"
-                      aria-label="See payment options"
-                    >
-                      See Payment Options
-                    </Link>
-
-                    <span className="hidden h-1 w-1 rounded-full bg-border md:inline-block" />
-
-                    <Link
-                      href={`/trade-in?vehicle=${vehicle.slug}`}
-                      className="transition-colors hover:text-accent"
-                      aria-label="Value your trade-in"
-                    >
-                      Value Your Trade
-                    </Link>
-                  </div>
-                </div>
-
-                {/* Badges & quick buyer highlights */}
-                <div className="mt-6 border-t border-border/80 pt-5">
-                  <div className="flex flex-wrap gap-2">
-                    {detailBadges.map((badge) => (
-                      <Badge key={badge.label} variant={badge.variant} className={badge.className}>
-                        {badge.label}
-                      </Badge>
+                  <div className="mt-3 divide-y divide-border/80 overflow-hidden rounded-[20px] border border-border/80 bg-white/92">
+                    {essentialDetails.map((detail) => (
+                      <div
+                        key={detail.label}
+                        className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+                      >
+                        <span className="text-text-secondary">{detail.label}</span>
+                        <span className="font-semibold text-text-primary">{detail.value}</span>
+                      </div>
                     ))}
                   </div>
 
-                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-text-secondary">Why buyers move quickly</p>
-                  <ul className="mt-3 space-y-2 text-sm leading-6 text-text-secondary">
+                  <div className="mt-4 rounded-[18px] border border-border/80 bg-surface-elevated/75 p-3.5">
+                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                      Budget guide
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-text-primary">
+                      Approx {formatCurrency(financeEstimate.monthly)}/month
+                    </p>
+                    <p className="mt-1 text-[0.82rem] leading-5 text-text-secondary">
+                      Estimate based on {Math.round(financeEstimate.depositRate * 100)}% deposit over {financeEstimate.termMonths} months. Confirm exact terms with sales.
+                    </p>
+                    <Link
+                      href={`${vehiclePath}?intent=financing#contact-panel`}
+                      className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-accent transition-colors hover:text-accent-hover"
+                    >
+                      Ask about payment options
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </div>
+
+                  <div className="mt-4 grid gap-2">
+                    <Button asChild variant="dark" className="w-full rounded-[18px]">
+                      <Link href={`${vehiclePath}?intent=viewing#contact-panel`}>
+                        Book viewing
+                      </Link>
+                    </Button>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                      <Button asChild variant="whatsapp" className="w-full rounded-[18px]">
+                        <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                          Chat on WhatsApp
+                        </a>
+                      </Button>
+                      <Button asChild variant="secondary" className="w-full rounded-[18px]">
+                        <a href={siteConfig.phoneHref}>
+                          Call {siteConfig.phoneDisplay}
+                        </a>
+                      </Button>
+                    </div>
+                    <Button asChild variant="primary" className="w-full rounded-[18px]">
+                      <Link href={`${vehiclePath}#contact-panel`}>
+                        Send message
+                      </Link>
+                    </Button>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
+                    <span>Order ID {stockCode}</span>
+                    <Link
+                      href={`/trade-in?vehicle=${vehicle.slug}`}
+                      className="font-semibold transition-colors hover:text-accent"
+                    >
+                      Trade-in accepted
+                    </Link>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-5">
+              <VehicleDescriptionSection
+                description={description}
+                featurePills={featurePills}
+                className="xl:hidden"
+              />
+
+              <Card className="rounded-[28px] p-5 lg:p-6">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-text-secondary">
+                  Vehicle details
+                </p>
+                <h2 className="mt-2 text-[1.45rem] font-semibold leading-tight tracking-[-0.04em] text-text-primary">
+                  Buyer notes and full specs
+                </h2>
+                <div className="mt-5">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                    Buyer notes
+                  </p>
+                  <ul className="mt-3 grid gap-x-8 gap-y-2 md:grid-cols-2">
                     {buyerHighlights.map((item) => (
-                      <li key={item} className="flex items-start gap-3">
-                        <span className="mt-1 inline-flex size-2 shrink-0 rounded-full bg-accent/70" />
+                      <li key={item} className="flex items-start gap-3 text-sm leading-6 text-text-secondary">
+                        <span className="mt-2 inline-flex size-1.5 shrink-0 rounded-full bg-accent/70" />
                         <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
+
+                <details className="mt-5 rounded-[22px] border border-border/80 bg-surface-elevated/58 p-4">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-text-primary [&::-webkit-details-marker]:hidden">
+                    Show full vehicle details
+                  </summary>
+                  <div className="mt-4">
+                    <SpecGrid vehicle={vehicle} />
+                  </div>
+                </details>
               </Card>
 
-              {/* Enquiry form (small) - keep visible on desktop */}
-              <div id="contact-panel" className="mt-6">
+              <section id="contact-panel" className="space-y-3">
+                <div>
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-text-secondary">
+                    Send message
+                  </p>
+                  <h2 className="mt-2 text-[1.45rem] font-semibold leading-tight tracking-[-0.04em] text-text-primary">
+                    Ask about this vehicle without a long back-and-forth
+                  </h2>
+                </div>
                 <VehicleEnquiryForm
                   vehicleId={id}
                   vehicleTitle={title}
@@ -402,69 +621,104 @@ export default async function VehicleDetailPage({
                   phoneDisplay={siteConfig.phoneDisplay}
                   whatsappUrl={whatsappUrl}
                 />
+              </section>
+            </div>
+
+            <Card className="rounded-[28px] p-5 lg:p-6 xl:sticky xl:top-24 xl:self-start">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+                Broker support
+              </p>
+              <h2 className="mt-2 text-[1.35rem] font-semibold leading-tight tracking-[-0.04em] text-text-primary">
+                {siteConfig.name}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">
+                Speak to the Mombasa team for viewing times, current availability, and finance or trade-in guidance before you travel.
+              </p>
+
+              <ul className="mt-4 space-y-2.5 text-sm leading-6 text-text-secondary">
+                <li>{location?.name || siteConfig.address}</li>
+                <li>{siteConfig.salesEmail}</li>
+                <li>{siteConfig.hoursLabel}</li>
+                <li>{homeStats.deliveredCount}+ vehicles delivered</li>
+              </ul>
+
+              <div className="mt-5 grid gap-2">
+                {confidenceStats.map((stat) => {
+                  const Icon = stat.icon;
+
+                  return (
+                    <div
+                      key={stat.label}
+                      className="rounded-[18px] border border-border/80 bg-surface-elevated/72 px-3.5 py-3"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon className="size-3.5 text-text-secondary/70" />
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-text-secondary">
+                          {stat.label}
+                        </p>
+                      </div>
+                      <p className="mt-1.5 text-sm font-semibold text-text-primary">
+                        {stat.value}
+                      </p>
+                      <p className="mt-1 text-[0.82rem] leading-5 text-text-secondary">
+                        {stat.detail}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-            </aside>
-          </div>
 
-          {/* More detail: Why this one stands out + similar */}
-          <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-            <section>
-              <Card className="rounded-[24px] p-6">
-                <h2 className="text-lg font-semibold text-text-primary">Why this one stands out</h2>
-                <ul className="mt-4 space-y-2.5 text-sm leading-7 text-text-secondary">
-                  {overviewHighlights.map((item) => (
-                    <li key={item} className="flex items-start gap-3">
-                      <span className="mt-2 inline-flex size-2 shrink-0 rounded-full bg-border" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="mt-5 grid gap-2">
+                <Button asChild variant="secondary" className="w-full rounded-[18px]">
+                  <a href={siteConfig.phoneHref}>Call {siteConfig.phoneDisplay}</a>
+                </Button>
+                {location?.mapUrl ? (
+                  <Button asChild variant="ghost" className="w-full rounded-[18px]">
+                    <a href={location.mapUrl} target="_blank" rel="noreferrer">
+                      Open showroom location
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+            </Card>
+          </section>
 
-                <p className="pt-4 text-sm font-medium text-text-primary">
-                  Mention ref <span className="font-bold">{stockCode}</span> when you call or message and sales will move faster.
-                </p>
-              </Card>
-
-              {/* Similar vehicles */}
-              {similarVehicles.length ? (
-                <div className="mt-6 space-y-5">
-                  <h3 className="text-xl font-semibold text-text-primary">Similar vehicles</h3>
-                  <div className="mt-3 grid gap-6 md:grid-cols-2">
-                    {similarVehicles.map((item) => (
-                      <VehicleCard key={item.id} vehicle={item} />
-                    ))}
-                  </div>
+          {similarVehicles.length ? (
+            <section className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-text-secondary">
+                    Related
+                  </p>
+                  <h2 className="mt-2 text-[1.55rem] font-semibold leading-tight tracking-[-0.04em] text-text-primary">
+                    Related listings
+                  </h2>
                 </div>
-              ) : null}
+                <Link
+                  href="/inventory"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-text-secondary transition-colors hover:text-accent"
+                >
+                  Browse full inventory
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {similarVehicles.map((item) => (
+                  <VehicleCard key={item.id} vehicle={item} />
+                ))}
+              </div>
             </section>
-
-            {/* Small contact CTA card on the right for desktop */}
-            <aside className="min-w-0">
-              <Card className="rounded-[24px] p-6">
-                <h4 className="text-sm font-semibold text-text-primary">Need help?</h4>
-                <p className="mt-2 text-sm text-text-secondary">Talk to our sales team for availability, finance options, or to request more photos.</p>
-
-                <div className="mt-4 grid gap-3">
-                  <Button asChild variant="whatsapp" className="h-12 rounded-2xl">
-                    <a href={whatsappUrl} target="_blank" rel="noreferrer" aria-label="Message on WhatsApp">
-                      <WhatsAppIcon className="mr-2 size-[1rem]" aria-hidden />
-                      Message
-                    </a>
-                  </Button>
-                  <Button asChild variant="secondary" className="h-12 rounded-2xl">
-                    <a href={siteConfig.phoneHref} aria-label="Call sales">
-                      <Phone className="mr-2 size-[1rem]" aria-hidden />
-                      Call
-                    </a>
-                  </Button>
-                </div>
-              </Card>
-            </aside>
-          </div>
+          ) : null}
         </div>
       </main>
 
-      <MobileCtaBar whatsappUrl={whatsappUrl} phoneHref={siteConfig.phoneHref} />
+      <MobileCtaBar
+        whatsappUrl={whatsappUrl}
+        phoneHref={siteConfig.phoneHref}
+        primaryHref={`${vehiclePath}?intent=viewing#contact-panel`}
+        primaryLabel="Reserve"
+      />
     </>
   );
-} 
+}

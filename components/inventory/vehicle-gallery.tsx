@@ -84,10 +84,12 @@ export function VehicleGallery({
   images,
   heroImageUrl,
   title,
+  compact = false,
 }: {
   images: VehicleImage[];
   heroImageUrl?: string | null;
   title: string;
+  compact?: boolean;
 }) {
   const galleryImages = normalizeGalleryImages(images, title, heroImageUrl);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -171,7 +173,12 @@ export function VehicleGallery({
 
   if (!primaryImage) {
     return (
-      <div className="rounded-[32px] border border-border bg-surface p-10 text-center shadow-[0_12px_30px_rgba(28,35,43,0.05)]">
+      <div
+        className={cn(
+          "rounded-[28px] border border-border bg-surface text-center shadow-[0_12px_30px_rgba(28,35,43,0.05)]",
+          compact ? "p-8" : "p-10",
+        )}
+      >
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-accent">
           Photos coming soon
         </p>
@@ -185,10 +192,13 @@ export function VehicleGallery({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-[36px] border border-border bg-surface shadow-[0_12px_30px_rgba(28,35,43,0.05)] selection:bg-transparent">
+    <div className={cn(compact ? "space-y-3" : "space-y-4")}>
+      <div className="relative overflow-hidden rounded-[28px] border border-border bg-surface shadow-[0_12px_30px_rgba(28,35,43,0.05)] selection:bg-transparent">
         <div
-          className="relative aspect-[4/3] overflow-hidden cursor-zoom-in"
+          className={cn(
+            "relative overflow-hidden cursor-zoom-in",
+            compact ? "aspect-[4/3] lg:aspect-[5/4] xl:aspect-[16/11]" : "aspect-[4/3]",
+          )}
           role="button"
           tabIndex={0}
           aria-label={`Open ${title} photo ${activeIndex + 1} in full screen`}
@@ -218,7 +228,11 @@ export function VehicleGallery({
             alt={getGalleryAltText(activeImage, activeIndex, title)}
             fill
             priority
-            sizes="(min-width: 1024px) 58vw, 100vw"
+            sizes={
+              compact
+                ? "(min-width: 1280px) 34vw, (min-width: 1024px) 46vw, 100vw"
+                : "(min-width: 1024px) 58vw, 100vw"
+            }
             className="object-cover"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[rgba(17,24,33,0.35)] via-[rgba(17,24,33,0.1)] to-transparent" />
@@ -263,7 +277,8 @@ export function VehicleGallery({
               key={image.id}
               type="button"
               className={cn(
-                "relative aspect-[4/3] w-28 shrink-0 overflow-hidden rounded-[12px] border-2 shadow-sm transition-all sm:w-32",
+                "relative aspect-[4/3] shrink-0 overflow-hidden rounded-[12px] border-2 shadow-sm transition-all",
+                compact ? "w-24 sm:w-28" : "w-28 sm:w-32",
                 activeImage?.id === image.id
                   ? "border-accent shadow-[0_10px_24px_rgba(23,58,94,0.12)]"
                   : "border-transparent hover:border-accent/50 hover:shadow-md",
