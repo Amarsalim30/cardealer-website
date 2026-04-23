@@ -67,14 +67,16 @@ type PreparedUploadPayload = {
 const initialState: ActionState = { success: false, message: "" };
 const selectClassName =
   "h-12 w-full rounded-2xl border border-border bg-white px-4 text-sm text-stone-900 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20";
+const unsavedChangesMessage =
+  "You have unsaved changes. Leave the editor without saving?";
 
 const editorSections = [
-  { id: "quick-fill", label: "Quick fill" },
   { id: "basics", label: "Basics" },
   { id: "listing-setup", label: "Listing setup" },
   { id: "gallery", label: "Gallery" },
   { id: "vehicle-details", label: "Vehicle details" },
   { id: "description", label: "Description" },
+  { id: "quick-fill", label: "Quick fill" },
 ] as const;
 
 const conditionOptions = [
@@ -292,6 +294,23 @@ export function VehicleForm({
     });
   }, [vehicle]);
 
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!hasUnsavedChanges) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = unsavedChangesMessage;
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
   function getFieldError(name: string) {
     return state.fieldErrors?.[name]?.[0];
   }
@@ -331,6 +350,13 @@ export function VehicleForm({
   function markUnsaved() {
     setHasUnsavedChanges(true);
     clearSuccessNotice();
+  }
+
+  function clearPendingFiles() {
+    setPendingFiles((current) => {
+      current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
   }
 
   function formatCurrency(value: number) {
@@ -1028,6 +1054,44 @@ export function VehicleForm({
     };
   }
 
+  function reconcileSavedImages(
+    uploadedByPendingId: Map<string, UploadedPendingFile>,
+  ) {
+    setImages((current) =>
+      normalizeImages(
+        current.map((image) => {
+          if (image.uploadState === "pending_file" && image.pendingFileId) {
+            const uploaded = uploadedByPendingId.get(image.pendingFileId);
+
+            return uploaded
+              ? {
+                  ...image,
+                  imageUrl: uploaded.secureUrl,
+                  cloudinaryPublicId: uploaded.publicId,
+                  sourceUrl: null,
+                  uploadState: "uploaded" as const,
+                }
+              : image;
+          }
+
+          if (image.uploadState === "pending_url") {
+            return {
+              ...image,
+              sourceUrl: null,
+              uploadState: "uploaded" as const,
+            };
+          }
+
+          return {
+            ...image,
+            sourceUrl: null,
+            uploadState: "uploaded" as const,
+          };
+        }),
+      ),
+    );
+  }
+
   function buildSubmissionImages(
     uploadedByPendingId: Map<string, UploadedPendingFile>,
   ): VehicleImageInput[] {
@@ -1122,10 +1186,13 @@ export function VehicleForm({
       }
 
       if (result.success) {
+        reconcileSavedImages(uploadedByPendingId);
+        clearPendingFiles();
         setState(initialState);
         setHasUnsavedChanges(false);
         setLastSavedAt(new Date().toISOString());
         setSuccessNotice(result.message || "Vehicle saved successfully.");
+        captureRequiredSnapshot();
         return;
       }
 
@@ -1144,6 +1211,36 @@ export function VehicleForm({
     startSubmitting(() => {
       void submitVehicleForm();
     });
+  }
+
+  function handleFormChangeCapture(event: React.FormEvent<HTMLFormElement>) {
+    const target = event.target;
+
+    if (
+      target instanceof HTMLTextAreaElement &&
+      target.id === "quick-paste"
+    ) {
+      return;
+    }
+
+    if (
+      target instanceof HTMLInputElement &&
+      (target.id === "manual-image" || target.type === "file")
+    ) {
+      return;
+    }
+
+    setHasUnsavedChanges(true);
+    clearSuccessNotice();
+    captureRequiredSnapshot();
+  }
+
+  function handleReturnToInventory() {
+    if (hasUnsavedChanges && !window.confirm(unsavedChangesMessage)) {
+      return;
+    }
+
+    router.push("/admin/vehicles");
   }
 
   function addManualImage() {
@@ -1300,11 +1397,7 @@ const pendingFileId =
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        onChangeCapture={() => {
-          setHasUnsavedChanges(true);
-          clearSuccessNotice();
-          captureRequiredSnapshot();
-        }}
+        onChangeCapture={handleFormChangeCapture}
         className="flex flex-col gap-7"
       >
         <input type="hidden" name="id" value={vehicle?.id || ""} />
@@ -1332,8 +1425,13 @@ const pendingFileId =
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Button asChild variant="secondary" className="w-full sm:w-auto">
-                <Link href="/admin/vehicles">Return to inventory</Link>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full sm:w-auto"
+                onClick={handleReturnToInventory}
+              >
+                Return to inventory
               </Button>
               <Button type="submit" className="w-full sm:w-auto" disabled={isSubmitting}>
                 {isSubmitting ? <LoaderCircle className="size-4 animate-spin" /> : null}
@@ -1391,51 +1489,56 @@ const pendingFileId =
 
         <FormSection
           id="quick-fill"
-          title="Quick fill"
-          description="Paste a WhatsApp listing and let us prefill the fields you already have."
-          className="order-0"
+          title="Quick fill helper"
+          description="Use this only when you already have a dealer message to parse. The normal workflow starts with the fields above."
+          className="order-6"
         >
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div>
-              <Label htmlFor="quick-paste">Paste dealer message</Label>
-              <Textarea
-                id="quick-paste"
-                value={quickPaste}
-                onChange={(event) => {
-                  setQuickPaste(event.target.value);
-                  if (quickPasteNotice) {
+          <details className="rounded-[24px] border border-border/70 bg-stone-50/80 px-4 py-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-stone-950">
+              Open quick fill helper
+            </summary>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <div>
+                <Label htmlFor="quick-paste">Paste dealer message</Label>
+                <Textarea
+                  id="quick-paste"
+                  value={quickPaste}
+                  onChange={(event) => {
+                    setQuickPaste(event.target.value);
+                    if (quickPasteNotice) {
+                      setQuickPasteNotice("");
+                    }
+                  }}
+                  placeholder="Paste the dealer message here..."
+                  className="min-h-32"
+                />
+                <p className="mt-2 text-xs text-stone-500">
+                  We detect make, model, year, price, engine cc, fuel, condition, and
+                  location when possible.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:items-stretch">
+                <Button type="button" onClick={handleQuickPaste}>
+                  Parse & fill
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setQuickPaste("");
                     setQuickPasteNotice("");
-                  }
-                }}
-                placeholder="Paste the dealer message here..."
-                className="min-h-32"
-              />
-              <p className="mt-2 text-xs text-stone-500">
-                We detect make, model, year, price, engine cc, fuel, condition, and
-                location when possible.
-              </p>
+                  }}
+                >
+                  Clear paste
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row lg:flex-col lg:items-stretch">
-              <Button type="button" onClick={handleQuickPaste}>
-                Parse & fill
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setQuickPaste("");
-                  setQuickPasteNotice("");
-                }}
-              >
-                Clear paste
-              </Button>
-            </div>
-          </div>
-          {quickPasteNotice ? (
-            <div className="rounded-[18px] border border-border/70 bg-stone-50 px-4 py-3 text-xs text-stone-600">
-              {quickPasteNotice}
-            </div>
-          ) : null}
+            {quickPasteNotice ? (
+              <div className="mt-4 rounded-[18px] border border-border/70 bg-white px-4 py-3 text-xs text-stone-600">
+                {quickPasteNotice}
+              </div>
+            ) : null}
+          </details>
         </FormSection>
 
         <FormSection

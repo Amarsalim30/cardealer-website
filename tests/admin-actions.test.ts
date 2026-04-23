@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => {
     deleteCloudinaryAssets: vi.fn(),
     mapVehicleFormData: vi.fn(),
     getAdminVehicles: vi.fn(),
+    getVehicleById: vi.fn(),
     saveVehicle: vi.fn(),
+    deleteVehicle: vi.fn(),
+    updateVehicleStatus: vi.fn(),
     redirect: vi.fn(),
     revalidatePath: vi.fn(),
     isRedirectError: vi.fn(() => false),
@@ -63,16 +66,19 @@ vi.mock("@/lib/vehicle-form", () => ({
 }));
 
 vi.mock("@/lib/data/repository", () => ({
-  deleteVehicle: vi.fn(),
+  deleteVehicle: mocks.deleteVehicle,
   getAdminVehicles: mocks.getAdminVehicles,
-  getVehicleById: vi.fn(),
+  getVehicleById: mocks.getVehicleById,
   saveVehicle: mocks.saveVehicle,
   syncVehicleImagesFromCloudinary: vi.fn(),
   toggleVehicleFeatured: vi.fn(),
-  updateVehicleStatus: vi.fn(),
+  updateVehicleStatus: mocks.updateVehicleStatus,
 }));
 
-import { saveVehicleAction } from "@/lib/actions/admin-actions";
+import {
+  bulkVehicleAction,
+  saveVehicleAction,
+} from "@/lib/actions/admin-actions";
 
 function buildVehicleInput(overrides: Record<string, unknown> = {}) {
   return {
@@ -358,5 +364,56 @@ describe("saveVehicleAction", () => {
       }),
       { forceDemo: false },
     );
+  });
+});
+
+describe("bulkVehicleAction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireAdminSession.mockResolvedValue({
+      mode: "supabase",
+      email: "admin@example.com",
+      name: "Admin",
+    });
+  });
+
+  it("rejects requests without selected vehicles", async () => {
+    const result = await bulkVehicleAction(
+      { success: false, message: "" },
+      new FormData(),
+    );
+
+    expect(result).toEqual({
+      success: false,
+      message: "Select at least one vehicle.",
+    });
+  });
+
+  it("returns partial failure results when one bulk status update fails", async () => {
+    mocks.updateVehicleStatus
+      .mockResolvedValueOnce({ slug: "toyota-corolla" })
+      .mockRejectedValueOnce(new Error("Second update failed."));
+
+    const formData = new FormData();
+    formData.set("action", "sold");
+    formData.append("ids", "vehicle-1");
+    formData.append("ids", "vehicle-2");
+
+    const result = await bulkVehicleAction(
+      { success: false, message: "" },
+      formData,
+    );
+
+    expect(result).toEqual({
+      success: false,
+      message: "1 updated, 1 failed.",
+      results: [
+        { id: "vehicle-1", success: true },
+        { id: "vehicle-2", success: false, message: "Second update failed." },
+      ],
+    });
+    expect(mocks.updateVehicleStatus).toHaveBeenCalledTimes(2);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/vehicles");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/cars/toyota-corolla");
   });
 });

@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminUnavailableState } from "@/components/admin/admin-unavailable-state";
 import { LeadInbox } from "@/components/admin/lead-inbox";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { requireAdminSession } from "@/lib/auth";
 import { isRepositoryUnavailableError } from "@/lib/data/errors";
 import { getLeadInbox } from "@/lib/data/repository";
+import { cn } from "@/lib/utils";
 import {
   leadInboxFilters,
   leadWorkflowStatuses,
@@ -75,6 +73,17 @@ function getStatusCount(
   return summary.closedCount;
 }
 
+function buildLeadsHref(
+  filter: LeadInboxFilter,
+  status: LeadInboxStatusFilter,
+) {
+  if (filter === "all" && status === "all") {
+    return "/admin/leads";
+  }
+
+  return `/admin/leads?filter=${filter}&status=${status}`;
+}
+
 export default async function AdminLeadsPage({
   searchParams,
 }: {
@@ -94,17 +103,21 @@ export default async function AdminLeadsPage({
     )
       ? (params.status as LeadInboxStatusFilter)
       : "all";
+  const notice = typeof params.notice === "string" ? params.notice : "";
 
   let inbox: Awaited<ReturnType<typeof getLeadInbox>> | null = null;
   let unavailableDescription: string | null = null;
 
   try {
-    inbox = await getLeadInbox({
-      type: activeFilter,
-      status: activeStatus,
-    }, {
-      forceDemo: session.mode === "demo",
-    });
+    inbox = await getLeadInbox(
+      {
+        type: activeFilter,
+        status: activeStatus,
+      },
+      {
+        forceDemo: session.mode === "demo",
+      },
+    );
   } catch (error) {
     if (isRepositoryUnavailableError(error)) {
       unavailableDescription = error.message;
@@ -115,20 +128,26 @@ export default async function AdminLeadsPage({
 
   if (unavailableDescription) {
     return (
-      <div className="space-y-6">
-        <AdminPageHeader
-          eyebrow="Lead operations"
-          title="Lead inbox"
-          description="Respond to new customer intent quickly, keep the workflow truthful, and avoid losing warm enquiries."
-        />
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+              Lead operations
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-stone-950">
+              Lead inbox
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-stone-600">
+              Work the newest enquiries first, keep the queue truthful, and keep
+              handoff friction low on mobile.
+            </p>
+          </div>
+        </div>
+
         <AdminUnavailableState
           title="Lead inbox is unavailable"
           description={unavailableDescription}
-          retryHref={
-            activeFilter === "all" && activeStatus === "all"
-              ? "/admin/leads"
-              : `/admin/leads?filter=${activeFilter}&status=${activeStatus}`
-          }
+          retryHref={buildLeadsHref(activeFilter, activeStatus)}
           backHref="/admin/vehicles"
         />
       </div>
@@ -146,132 +165,101 @@ export default async function AdminLeadsPage({
     })),
   ];
 
-  const summaryCards: Array<{
-    label: string;
-    value: LeadInboxStatusFilter;
-  }> = [
-    { label: "All leads", value: "all" },
-    { label: "New", value: "new" },
-    { label: "Follow up", value: "follow_up" },
-    { label: "Closed", value: "closed" },
-  ];
-
   return (
-    <div className="space-y-6">
-      <AdminPageHeader
-        eyebrow="Lead operations"
-        title="Lead inbox"
-        description="Treat this like a lightweight CRM: triage fast, update status after each touchpoint, and keep the queue focused on what still needs action."
-        actions={
-          <Button asChild variant="secondary">
-            <Link
-              href={
-                activeFilter === "all" && activeStatus === "all"
-                  ? "/admin/leads"
-                  : `/admin/leads?filter=${activeFilter}&status=${activeStatus}`
-              }
-            >
-              Refresh view
-            </Link>
+    <div className="space-y-5">
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+              Lead operations
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold text-stone-950">
+              Lead inbox
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-stone-600">
+              Scan the queue like an inbox: newest first, open one lead, update
+              it, and move on.
+            </p>
+          </div>
+
+          <Button asChild variant="secondary" size="sm">
+            <Link href={buildLeadsHref(activeFilter, activeStatus)}>Refresh view</Link>
           </Button>
-        }
-      />
+        </div>
 
-      <div className="grid gap-4 xl:grid-cols-4">
-        {summaryCards.map((card) => (
-          <Card
-            key={card.value}
-            className="rounded-[28px] border border-border/70 bg-white/95 p-5 shadow-[0_18px_42px_rgba(15,23,42,0.05)]"
+        {notice ? (
+          <div
+            className="rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+            role="status"
           >
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-stone-500">
-              {card.label}
-            </p>
-            <div className="mt-3 flex items-end justify-between gap-3">
-              <p className="text-3xl font-semibold text-stone-950">
-                {getStatusCount(inbox!.summary, card.value)}
-              </p>
-              {card.value === activeStatus ? (
-                <Badge variant="accent">Active</Badge>
-              ) : null}
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="rounded-[30px] border border-border/70 bg-white/95 p-5 shadow-[0_18px_42px_rgba(15,23,42,0.05)] sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)]">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              Lead type
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {filters.map((filter) => (
-                <Button
-                  key={filter}
-                  asChild
-                  variant={filter === activeFilter ? "primary" : "secondary"}
-                  size="sm"
-                >
-                  <Link
-                    href={
-                      filter === "all" && activeStatus === "all"
-                        ? "/admin/leads"
-                        : `/admin/leads?filter=${filter}&status=${activeStatus}`
-                    }
-                  >
-                    {humanizeLeadFilter(filter)}
-                    <span className="text-xs opacity-80">
-                      {inbox!.typeCounts[filter]}
-                    </span>
-                  </Link>
-                </Button>
-              ))}
-            </div>
+            {notice}
           </div>
+        ) : null}
 
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-              Workflow status
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {statusFilters.map((status) => (
-                <Button
-                  key={status.value}
-                  asChild
-                  variant={status.value === activeStatus ? "primary" : "secondary"}
-                  size="sm"
+        <div className="flex flex-wrap gap-2">
+          {statusFilters.map((status) => {
+            const isActive = status.value === activeStatus;
+
+            return (
+              <Link
+                key={status.value}
+                href={buildLeadsHref(activeFilter, status.value)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "border-stone-950 bg-stone-950 text-white"
+                    : "border-border bg-white text-stone-700 hover:bg-stone-50",
+                )}
+              >
+                <span>{status.label}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    isActive ? "bg-white/15 text-white" : "bg-stone-100 text-stone-700",
+                  )}
                 >
-                  <Link
-                    href={
-                      activeFilter === "all" && status.value === "all"
-                        ? "/admin/leads"
-                        : `/admin/leads?filter=${activeFilter}&status=${status.value}`
-                    }
-                  >
-                    {status.label}
-                    <span className="text-xs opacity-80">
-                      {getStatusCount(inbox!.summary, status.value)}
-                    </span>
-                  </Link>
-                </Button>
-              ))}
-            </div>
-          </div>
+                  {getStatusCount(inbox!.scopedSummary, status.value)}
+                </span>
+              </Link>
+            );
+          })}
         </div>
-      </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <div>
-          <p className="text-sm font-semibold text-stone-950">
-            {humanizeLeadFilter(activeFilter)}
-          </p>
-          <p className="text-sm text-stone-600">
-            {humanizeWorkflowStatus(activeStatus)} view with {inbox!.items.length}{" "}
-            enquiry
-            {inbox!.items.length === 1 ? "" : "ies"}.
-          </p>
+        <div className="flex flex-wrap gap-2">
+          {filters.map((filter) => {
+            const isActive = filter === activeFilter;
+
+            return (
+              <Link
+                key={filter}
+                href={buildLeadsHref(filter, activeStatus)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                  isActive
+                    ? "border-accent bg-accent text-white"
+                    : "border-border bg-white text-stone-700 hover:bg-stone-50",
+                )}
+              >
+                <span>{humanizeLeadFilter(filter)}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    isActive ? "bg-white/15 text-white" : "bg-stone-100 text-stone-700",
+                  )}
+                >
+                  {inbox!.typeCounts[filter]}
+                </span>
+              </Link>
+            );
+          })}
         </div>
-      </div>
+
+        <p className="text-sm text-stone-600">
+          {humanizeLeadFilter(activeFilter)} in {humanizeWorkflowStatus(activeStatus).toLowerCase()}
+          {" "}
+          with {inbox!.items.length} {inbox!.items.length === 1 ? "enquiry" : "enquiries"}.
+        </p>
+      </section>
 
       <LeadInbox items={inbox!.items} />
     </div>

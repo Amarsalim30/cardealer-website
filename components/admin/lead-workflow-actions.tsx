@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { updateLeadInboxStateAction } from "@/lib/actions/admin-actions";
 import { cn } from "@/lib/utils";
@@ -20,15 +20,59 @@ const initialState: ActionState = {
 const selectClassName =
   "h-10 rounded-2xl border border-border bg-white px-3 text-sm text-stone-900 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20";
 
-const statusOptions: Array<{
-  label: string;
-  value: LeadWorkflowStatus;
-}> = [
-  { label: "New", value: "new" },
-  { label: "Contacted", value: "contacted" },
-  { label: "Follow up", value: "follow_up" },
-  { label: "Closed", value: "closed" },
-];
+function humanizeLeadStatus(status: LeadWorkflowStatus) {
+  if (status === "follow_up") {
+    return "Follow up";
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function getAllowedNextStatuses(
+  currentStatus: LeadWorkflowStatus,
+): LeadWorkflowStatus[] {
+  if (currentStatus === "new") {
+    return ["contacted"];
+  }
+
+  if (currentStatus === "contacted") {
+    return ["follow_up", "closed"];
+  }
+
+  if (currentStatus === "follow_up") {
+    return ["contacted", "closed"];
+  }
+
+  return ["contacted"];
+}
+
+function buildLeadWorkflowNotice(
+  activeStatusFilter: string | null,
+  nextStatus: LeadWorkflowStatus,
+  actionMessage: string,
+) {
+  if (
+    activeStatusFilter &&
+    activeStatusFilter !== "all" &&
+    activeStatusFilter !== nextStatus
+  ) {
+    return `${actionMessage} It may no longer appear because this view is filtered to ${humanizeLeadStatus(activeStatusFilter as LeadWorkflowStatus)}.`;
+  }
+
+  return actionMessage;
+}
+
+function getSubmitLabel(nextStatus: LeadWorkflowStatus) {
+  if (nextStatus === "contacted") {
+    return "Mark contacted";
+  }
+
+  if (nextStatus === "follow_up") {
+    return "Move to follow up";
+  }
+
+  return "Close lead";
+}
 
 export function LeadWorkflowActions({
   sourceId,
@@ -39,60 +83,89 @@ export function LeadWorkflowActions({
   sourceType: LeadInboxSourceType;
   status: LeadWorkflowStatus;
 }) {
-  const router = useRouter();
-  const [nextStatus, setNextStatus] = useState<LeadWorkflowStatus>(status);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const availableStatuses = useMemo(() => getAllowedNextStatuses(status), [status]);
+  const [nextStatus, setNextStatus] = useState<LeadWorkflowStatus>(
+    availableStatuses[0] || status,
+  );
   const [state, formAction] = useActionState(
     updateLeadInboxStateAction,
     initialState,
   );
 
   useEffect(() => {
-    setNextStatus(status);
+    setNextStatus(getAllowedNextStatuses(status)[0] || status);
   }, [status]);
 
   useEffect(() => {
-    if (state.success) {
-      router.refresh();
+    if (!state.success) {
+      return;
     }
-  }, [router, state]);
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(
+      "notice",
+      buildLeadWorkflowNotice(
+        params.get("status"),
+        nextStatus,
+        state.message || "Lead status updated.",
+      ),
+    );
+    const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+    window.location.assign(nextUrl);
+  }, [nextStatus, pathname, searchParams, state.message, state.success]);
 
   return (
     <div className="space-y-2">
-      {status !== "contacted" ? (
-        <form action={formAction}>
-          <input type="hidden" name="sourceId" value={sourceId} />
-          <input type="hidden" name="sourceType" value={sourceType} />
-          <input type="hidden" name="status" value="contacted" />
-          <SubmitButton size="sm" className="rounded-full">
-            Mark contacted
-          </SubmitButton>
-        </form>
-      ) : null}
-
-      <form action={formAction} className="flex flex-wrap items-center gap-2">
+      <form action={formAction} className="space-y-2">
         <input type="hidden" name="sourceId" value={sourceId} />
         <input type="hidden" name="sourceType" value={sourceType} />
         <input type="hidden" name="status" value={nextStatus} />
-        <select
-          className={selectClassName}
-          value={nextStatus}
-          onChange={(event) =>
-            setNextStatus(event.target.value as LeadWorkflowStatus)
-          }
-          aria-label="Lead status"
-        >
-          {statusOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+
+        {availableStatuses.length > 1 ? (
+          <div className="space-y-1">
+            <label
+              htmlFor={`lead-status-${sourceType}-${sourceId}`}
+              className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500"
+            >
+              Next step
+            </label>
+            <select
+              id={`lead-status-${sourceType}-${sourceId}`}
+              className={selectClassName}
+              value={nextStatus}
+              onChange={(event) =>
+                setNextStatus(event.target.value as LeadWorkflowStatus)
+              }
+              aria-label="Next lead status"
+            >
+              {availableStatuses.map((option) => (
+                <option key={option} value={option}>
+                  {humanizeLeadStatus(option)}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-border/70 bg-white px-3 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+              Next step
+            </p>
+            <p className="mt-1 text-sm font-medium text-stone-900">
+              {humanizeLeadStatus(nextStatus)}
+            </p>
+          </div>
+        )}
+
         <SubmitButton
           size="sm"
-          variant="secondary"
-          className={cn("rounded-full", nextStatus === status ? "opacity-80" : "")}
+          className={cn(
+            "rounded-full",
+            availableStatuses.length === 1 ? "w-full justify-center" : "",
+          )}
         >
-          Update
+          {getSubmitLabel(nextStatus)}
         </SubmitButton>
       </form>
 

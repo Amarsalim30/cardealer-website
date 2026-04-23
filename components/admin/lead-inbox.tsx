@@ -1,13 +1,26 @@
-import Link from "next/link";
+"use client";
 
+import { useDeferredValue, useEffect, useState } from "react";
+import Link from "next/link";
+import { Mail, MessageCircle, Phone, Search, X } from "lucide-react";
+
+import { LeadWorkflowActions } from "@/components/admin/lead-workflow-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { LeadWorkflowActions } from "@/components/admin/lead-workflow-actions";
+import { Input } from "@/components/ui/input";
 import { buildWhatsAppUrl, cn } from "@/lib/utils";
 import type { LeadInboxItem, LeadWorkflowStatus } from "@/types/dealership";
 
-function formatDateTime(value: string) {
+function formatRowTimestamp(value: string) {
+  return new Date(value).toLocaleString("en-KE", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatDetailTimestamp(value: string) {
   return new Date(value).toLocaleString("en-KE", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -50,174 +63,556 @@ function getStatusVariant(status: LeadWorkflowStatus) {
   return "muted";
 }
 
+function getStatusDotClass(status: LeadWorkflowStatus) {
+  if (status === "new") {
+    return "bg-accent";
+  }
+
+  if (status === "contacted") {
+    return "bg-success";
+  }
+
+  if (status === "follow_up") {
+    return "bg-amber-500";
+  }
+
+  return "bg-stone-300";
+}
+
+function getLeadKey(item: Pick<LeadInboxItem, "sourceId" | "sourceType">) {
+  return `${item.sourceType}:${item.sourceId}`;
+}
+
+function getLeadSubject(item: LeadInboxItem) {
+  if (item.vehicleTitle) {
+    return item.vehicleTitle;
+  }
+
+  if (item.type === "quote") {
+    return "General quote request";
+  }
+
+  if (item.type === "contact") {
+    return "General enquiry";
+  }
+
+  if (item.type === "financing") {
+    return "Financing enquiry";
+  }
+
+  if (item.type === "test_drive") {
+    return "Viewing request";
+  }
+
+  return "Trade-in enquiry";
+}
+
+function getLeadPreview(item: LeadInboxItem) {
+  const preview =
+    item.message?.trim() || item.details[0]?.value || item.source?.trim();
+
+  return preview || "No message added yet.";
+}
+
+function buildLeadSearchText(item: LeadInboxItem) {
+  return [
+    item.name,
+    item.phone,
+    item.email || "",
+    getLeadSubject(item),
+    item.message || "",
+    item.source || "",
+    humanizeLeadType(item.type),
+    humanizeLeadStatus(item.status),
+    ...item.details.flatMap((detail) => [detail.label, detail.value]),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 function buildLeadWhatsAppMessage(item: LeadInboxItem) {
   return `Hi ${item.name}, this is Ocean Motors following up on your ${
     item.vehicleTitle || "enquiry"
   }.`;
 }
 
+function LeadPrimaryActions({
+  item,
+  mobile = false,
+}: {
+  item: LeadInboxItem;
+  mobile?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        mobile ? "grid gap-2" : "flex flex-wrap gap-2",
+        mobile && (item.email ? "grid-cols-3" : "grid-cols-2"),
+      )}
+    >
+      <Button
+        asChild
+        size="sm"
+        className={cn(mobile ? "w-full justify-center" : "rounded-full")}
+      >
+        <Link href={`tel:${item.phone.replace(/\s+/g, "")}`}>
+          <Phone className="size-4" />
+          Call
+        </Link>
+      </Button>
+      <Button
+        asChild
+        size="sm"
+        variant="whatsapp"
+        className={cn(mobile ? "w-full justify-center" : "rounded-full")}
+      >
+        <Link
+          href={buildWhatsAppUrl(buildLeadWhatsAppMessage(item), item.phone)}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MessageCircle className="size-4" />
+          WhatsApp
+        </Link>
+      </Button>
+      {item.email ? (
+        <Button
+          asChild
+          size="sm"
+          variant={mobile ? "secondary" : "ghost"}
+          className={cn(mobile ? "w-full justify-center" : "rounded-full")}
+        >
+          <Link href={`mailto:${item.email}`}>
+            <Mail className="size-4" />
+            Email
+          </Link>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function LeadEmptyState({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex min-h-[280px] flex-col justify-center px-5 py-10 sm:px-6">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+        Lead inbox
+      </p>
+      <h2 className="mt-3 text-2xl font-semibold text-stone-950">{title}</h2>
+      <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function LeadDetailContent({
+  item,
+  mobile = false,
+}: {
+  item: LeadInboxItem;
+  mobile?: boolean;
+}) {
+  const subject = getLeadSubject(item);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="space-y-6 p-5 sm:p-6">
+          <section className="border-b border-border/70 pb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="accent"
+                className="px-2.5 py-1 text-[0.64rem] tracking-[0.18em]"
+              >
+                {humanizeLeadType(item.type)}
+              </Badge>
+              <Badge
+                variant={getStatusVariant(item.status)}
+                className="px-2.5 py-1 text-[0.64rem] tracking-[0.18em]"
+              >
+                {humanizeLeadStatus(item.status)}
+              </Badge>
+              {item.status === "new" ? (
+                <span className="rounded-full bg-accent/10 px-3 py-1 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-accent">
+                  Needs first touch
+                </span>
+              ) : null}
+            </div>
+
+            <h2 className="mt-4 text-2xl font-semibold text-stone-950">
+              {item.name}
+            </h2>
+            <p className="mt-2 text-base text-stone-700">{subject}</p>
+
+            {!mobile ? (
+              <div className="mt-4">
+                <LeadPrimaryActions item={item} />
+              </div>
+            ) : null}
+          </section>
+
+          <section className="grid gap-4 border-b border-border/70 pb-6 text-sm text-stone-700 sm:grid-cols-2">
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                Phone
+              </p>
+              <p className="mt-2 text-base font-medium text-stone-950">
+                {item.phone}
+              </p>
+            </div>
+
+            {item.email ? (
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                  Email
+                </p>
+                <p className="mt-2 break-all text-base font-medium text-stone-950">
+                  {item.email}
+                </p>
+              </div>
+            ) : null}
+
+            <div>
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                Received
+              </p>
+              <p className="mt-2 text-sm text-stone-700">
+                {formatDetailTimestamp(item.createdAt)}
+              </p>
+            </div>
+
+            {item.lastContactedAt ? (
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                  Last touch
+                </p>
+                <p className="mt-2 text-sm text-stone-700">
+                  {formatDetailTimestamp(item.lastContactedAt)}
+                </p>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="border-b border-border/70 pb-6">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+              Vehicle or enquiry
+            </p>
+            <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-base font-semibold text-stone-950">
+                  {subject}
+                </p>
+                {item.source ? (
+                  <p className="mt-2 text-sm text-stone-600">{item.source}</p>
+                ) : null}
+              </div>
+
+              {item.vehicleId ? (
+                <Button asChild size="sm" variant="ghost" className="rounded-full">
+                  <Link href={`/admin/vehicles/${item.vehicleId}`}>
+                    Open listing
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          </section>
+
+          {item.message ? (
+            <section className="border-b border-border/70 pb-6">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                Customer message
+              </p>
+              <p className="mt-3 text-sm leading-7 text-stone-700">
+                {item.message}
+              </p>
+            </section>
+          ) : null}
+
+          {item.details.length ? (
+            <section className="border-b border-border/70 pb-6">
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                Lead details
+              </p>
+              <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                {item.details.map((detail) => (
+                  <div
+                    key={`${item.id}-${detail.label}`}
+                    className="rounded-[22px] bg-stone-50 px-4 py-3"
+                  >
+                    <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
+                      {detail.label}
+                    </dt>
+                    <dd className="mt-2 text-sm text-stone-800">
+                      {detail.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
+
+          <section className={mobile ? "pb-2" : ""}>
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+              Workflow
+            </p>
+            <div className="mt-3 max-w-xs">
+              <LeadWorkflowActions
+                sourceId={item.sourceId}
+                sourceType={item.sourceType}
+                status={item.status}
+              />
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {mobile ? (
+        <div className="border-t border-border/70 bg-white/95 px-4 py-3 backdrop-blur">
+          <LeadPrimaryActions item={item} mobile />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function LeadInbox({ items }: { items: LeadInboxItem[] }) {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query.trim().toLowerCase());
+  const sortedItems = [...items].sort((left, right) => {
+    const leftTimestamp = new Date(
+      left.lastContactedAt || left.createdAt,
+    ).getTime();
+    const rightTimestamp = new Date(
+      right.lastContactedAt || right.createdAt,
+    ).getTime();
+
+    return rightTimestamp - leftTimestamp;
+  });
+  const filteredItems = deferredQuery
+    ? sortedItems.filter((item) =>
+        buildLeadSearchText(item).includes(deferredQuery),
+      )
+    : sortedItems;
+  const [selectedLeadKey, setSelectedLeadKey] = useState<string | null>(
+    filteredItems[0] ? getLeadKey(filteredItems[0]) : null,
+  );
+  const selectedItem =
+    filteredItems.find((item) => getLeadKey(item) === selectedLeadKey) || null;
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+
+  useEffect(() => {
+    if (!filteredItems.length) {
+      setSelectedLeadKey(null);
+      setMobileDetailOpen(false);
+      return;
+    }
+
+    if (
+      !selectedLeadKey ||
+      !filteredItems.some((item) => getLeadKey(item) === selectedLeadKey)
+    ) {
+      setSelectedLeadKey(getLeadKey(filteredItems[0]));
+    }
+  }, [filteredItems, selectedLeadKey]);
+
   if (!items.length) {
     return (
-      <Card className="rounded-[30px] border border-border/70 bg-white/95 p-6 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary">
-          No leads in this view
-        </p>
-        <h2 className="mt-3 text-2xl font-semibold text-stone-950">
-          Nothing needs attention here right now.
-        </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600">
-          Try a different lead type or workflow status to keep triage moving.
-        </p>
-      </Card>
+      <div className="overflow-hidden rounded-[30px] border border-border/70 bg-white/95 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
+        <LeadEmptyState
+          title="No leads in this view"
+          description="Try a different lead type or workflow status to bring enquiries back into the inbox."
+        />
+      </div>
     );
   }
 
   return (
-    <div className="grid gap-4">
-      {items.map((item) => (
-        <Card
-          key={`${item.sourceType}-${item.sourceId}`}
-          className="rounded-[30px] border border-border/70 bg-white/95 p-5 shadow-[0_18px_42px_rgba(15,23,42,0.05)] sm:p-6"
-        >
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.95fr)]">
-            <div className="min-w-0 space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="accent">{humanizeLeadType(item.type)}</Badge>
-                <Badge variant={getStatusVariant(item.status)}>
-                  {humanizeLeadStatus(item.status)}
-                </Badge>
-                <p className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
-                  {formatDateTime(item.createdAt)}
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                <div>
-                  <h3 className="text-xl font-semibold text-stone-950">
-                    {item.name}
-                  </h3>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Button
-                      asChild
-                      size="sm"
-                      className="rounded-full"
-                    >
-                      <Link href={`tel:${item.phone.replace(/\s+/g, "")}`}>Call</Link>
-                    </Button>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="secondary"
-                      className="rounded-full"
-                    >
-                      <Link
-                        href={buildWhatsAppUrl(
-                          buildLeadWhatsAppMessage(item),
-                          item.phone,
-                        )}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        WhatsApp
-                      </Link>
-                    </Button>
-                    {item.email ? (
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="ghost"
-                        className="rounded-full"
-                      >
-                        <Link href={`mailto:${item.email}`}>Email</Link>
-                      </Button>
-                    ) : null}
-                  </div>
+    <>
+      <div className="overflow-hidden rounded-[30px] border border-border/70 bg-white/95 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
+        <div className="grid lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,0.88fr)]">
+          <section className="min-w-0 lg:border-r lg:border-border/70">
+            <div className="border-b border-border/70 px-4 py-4 sm:px-5">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+                  <Input
+                    aria-label="Search leads"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search name, phone, vehicle, or message"
+                    className="rounded-full border-border/80 bg-white pl-11"
+                  />
                 </div>
 
-                <div className="space-y-2 rounded-[24px] border border-border/70 bg-stone-50/90 p-4">
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                      Vehicle
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-stone-950">
-                      {item.vehicleTitle || "General enquiry"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                      Contact
-                    </p>
-                    <p className="mt-1 text-sm text-stone-700">{item.phone}</p>
-                    {item.email ? (
-                      <p className="text-sm text-stone-700">{item.email}</p>
-                    ) : null}
-                  </div>
-                  {item.lastContactedAt ? (
-                    <div>
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                        Last contacted
-                      </p>
-                      <p className="mt-1 text-sm text-stone-700">
-                        {formatDateTime(item.lastContactedAt)}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-
-              {item.message ? (
-                <div className="rounded-[24px] border border-border/70 bg-white px-4 py-4">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                    Customer message
+                <div className="hidden text-right sm:block">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
+                    Visible
                   </p>
-                  <p className="mt-2 text-sm leading-7 text-stone-700">
-                    {item.message}
+                  <p className="mt-1 text-sm font-semibold text-stone-950">
+                    {filteredItems.length} lead
+                    {filteredItems.length === 1 ? "" : "s"}
                   </p>
                 </div>
-              ) : null}
-
-              {item.details.length ? (
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {item.details.map((detail) => (
-                    <div
-                      key={`${item.id}-${detail.label}`}
-                      className="rounded-[22px] border border-border/70 bg-stone-50/80 px-4 py-3"
-                    >
-                      <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
-                        {detail.label}
-                      </dt>
-                      <dd className={cn("mt-1 text-sm text-stone-800")}>
-                        {detail.value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : null}
+              </div>
             </div>
 
-            <aside className="rounded-[28px] border border-border/70 bg-stone-50/90 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-stone-500">
-                Workflow
-              </p>
-              <h4 className="mt-2 text-lg font-semibold text-stone-950">
-                Keep this enquiry moving
-              </h4>
-              <p className="mt-2 text-sm leading-6 text-stone-600">
-                Update the triage state after each customer touchpoint so the
-                inbox stays truthful.
-              </p>
-              <div className="mt-4">
-                <LeadWorkflowActions
-                  sourceId={item.sourceId}
-                  sourceType={item.sourceType}
-                  status={item.status}
-                />
+            {filteredItems.length ? (
+              <ul className="divide-y divide-border/70">
+                {filteredItems.map((item) => {
+                  const itemKey = getLeadKey(item);
+                  const isSelected = itemKey === selectedLeadKey;
+
+                  return (
+                    <li key={itemKey}>
+                      <button
+                        type="button"
+                        className={cn(
+                          "group flex w-full items-start gap-3 px-4 py-3 text-left transition-colors sm:px-5 sm:py-3.5",
+                          isSelected ? "bg-[#f7f5ef]" : "bg-white hover:bg-stone-50",
+                        )}
+                        aria-label={`Open lead from ${item.name}`}
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                          const shouldOpenMobileDetail =
+                            typeof window !== "undefined" &&
+                            typeof window.matchMedia === "function" &&
+                            window.matchMedia("(max-width: 1023px)").matches;
+
+                          setSelectedLeadKey(itemKey);
+                          setMobileDetailOpen(shouldOpenMobileDetail);
+                        }}
+                      >
+                        <span
+                          className={cn(
+                            "mt-1.5 size-2.5 shrink-0 rounded-full",
+                            getStatusDotClass(item.status),
+                          )}
+                          aria-hidden="true"
+                        />
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <p
+                              className={cn(
+                                "truncate text-sm",
+                                item.status === "new"
+                                  ? "font-semibold text-stone-950"
+                                  : "font-medium text-stone-900",
+                              )}
+                            >
+                              {item.name}
+                            </p>
+                            <p className="shrink-0 text-xs font-medium text-stone-500">
+                              {formatRowTimestamp(
+                                item.lastContactedAt || item.createdAt,
+                              )}
+                            </p>
+                          </div>
+
+                          <p className="mt-1 line-clamp-1 text-sm text-stone-600">
+                            <span className="font-medium text-stone-800">
+                              {getLeadSubject(item)}
+                            </span>
+                            {" · "}
+                            {getLeadPreview(item)}
+                          </p>
+
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="accent"
+                              className="px-2.5 py-1 text-[0.62rem] tracking-[0.16em]"
+                            >
+                              {humanizeLeadType(item.type)}
+                            </Badge>
+                            <Badge
+                              variant={getStatusVariant(item.status)}
+                              className="px-2.5 py-1 text-[0.62rem] tracking-[0.16em]"
+                            >
+                              {humanizeLeadStatus(item.status)}
+                            </Badge>
+                            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                              Call
+                            </span>
+                            <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                              WhatsApp
+                            </span>
+                            {item.email ? (
+                              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                                Email
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <LeadEmptyState
+                title="No leads match this search"
+                description="Try a name, phone number, vehicle title, or workflow label from the current inbox view."
+              />
+            )}
+          </section>
+
+          <aside className="hidden min-h-[720px] bg-white lg:flex">
+            {selectedItem ? (
+              <LeadDetailContent item={selectedItem} />
+            ) : (
+              <LeadEmptyState
+                title="Pick a lead to inspect"
+                description="Select any row from the inbox to open the customer message, contact details, and next action."
+              />
+            )}
+          </aside>
+        </div>
+      </div>
+
+      {mobileDetailOpen && selectedItem ? (
+        <div
+          className="fixed inset-0 z-50 bg-stone-950/35 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Lead detail"
+          onClick={() => setMobileDetailOpen(false)}
+        >
+          <div
+            className="absolute inset-x-0 bottom-0 top-14 overflow-hidden rounded-t-[28px] bg-white shadow-[0_-18px_42px_rgba(15,23,42,0.18)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                    Lead detail
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-stone-950">
+                    {selectedItem.name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex size-10 items-center justify-center rounded-full border border-border bg-white text-stone-600 transition-colors hover:bg-stone-50 hover:text-stone-900"
+                  aria-label="Close lead detail"
+                  onClick={() => setMobileDetailOpen(false)}
+                >
+                  <X className="size-4" />
+                </button>
               </div>
-            </aside>
+
+              <LeadDetailContent item={selectedItem} mobile />
+            </div>
           </div>
-        </Card>
-      ))}
-    </div>
+        </div>
+      ) : null}
+    </>
   );
 }

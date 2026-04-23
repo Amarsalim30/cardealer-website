@@ -244,6 +244,7 @@ export interface LeadInboxItem {
   phone: string;
   email?: string | null;
   message?: string | null;
+  vehicleId?: string | null;
   vehicleTitle?: string | null;
   source?: string | null;
   createdAt: string;
@@ -266,6 +267,7 @@ export interface LeadInboxResult {
     status: LeadInboxStatusFilter;
   };
   summary: LeadInboxSummary;
+  scopedSummary: LeadInboxSummary;
   typeCounts: Record<LeadInboxFilter, number>;
 }
 
@@ -324,7 +326,7 @@ export interface AdminVehicleWorkspaceQuery {
   status?: VehicleStatus | "all";
   category?: StockCategory | "all";
   featured?: "all" | "featured" | "standard";
-  location?: string;
+  fuelType?: string;
   sort?: AdminVehicleSort;
 }
 
@@ -339,6 +341,7 @@ export interface AdminVehicleWorkspaceResult {
   items: Vehicle[];
   filters: Required<AdminVehicleWorkspaceQuery>;
   locations: Array<Pick<Location, "id" | "name">>;
+  fuelTypes: string[];
   summary: AdminVehicleWorkspaceSummary;
 }
 

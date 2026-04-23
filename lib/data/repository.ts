@@ -678,7 +678,7 @@ function normalizeAdminVehicleWorkspaceQuery(
     status: query.status || "all",
     category: query.category || "all",
     featured: query.featured || "all",
-    location: query.location || "",
+    fuelType: query.fuelType || "",
     sort: query.sort || "updated-desc",
   } satisfies Required<AdminVehicleWorkspaceQuery>;
 }
@@ -710,7 +710,7 @@ function matchesAdminVehicleWorkspaceQuery(
     return false;
   }
 
-  if (filters.location && vehicle.locationId !== filters.location) {
+  if (filters.fuelType && vehicle.fuelType !== filters.fuelType) {
     return false;
   }
 
@@ -761,6 +761,9 @@ export async function getAdminVehicleWorkspace(
         id: location.id,
         name: location.name,
       })),
+    fuelTypes: [...new Set(vehicles.map((vehicle) => vehicle.fuelType))]
+      .filter(Boolean)
+      .sort((left, right) => left.localeCompare(right)),
     summary: {
       total: vehicles.length,
       published: vehicles.filter((vehicle) => vehicle.status === "published").length,
@@ -1262,6 +1265,61 @@ function resolveLeadWorkflowState(
   );
 }
 
+function filterLeadInboxItemsByType(
+  items: LeadInboxItem[],
+  type: LeadInboxFilter,
+) {
+  if (type === "all") {
+    return items;
+  }
+
+  return items.filter((item) => item.type === type);
+}
+
+function getAllowedLeadWorkflowTransitions(
+  currentStatus: LeadWorkflowStatus,
+): LeadWorkflowStatus[] {
+  if (currentStatus === "new") {
+    return ["contacted"];
+  }
+
+  if (currentStatus === "contacted") {
+    return ["follow_up", "closed"];
+  }
+
+  if (currentStatus === "follow_up") {
+    return ["contacted", "closed"];
+  }
+
+  return ["contacted"];
+}
+
+function isLeadWorkflowTransitionAllowed(
+  currentStatus: LeadWorkflowStatus,
+  nextStatus: LeadWorkflowStatus,
+) {
+  return (
+    currentStatus === nextStatus ||
+    getAllowedLeadWorkflowTransitions(currentStatus).includes(nextStatus)
+  );
+}
+
+function resolveLeadLastContactedAt(
+  existingValue: string | null | undefined,
+  nextStatus: LeadWorkflowStatus,
+  now: string,
+) {
+  if (nextStatus === "new") {
+    return null;
+  }
+
+  if (nextStatus === "contacted") {
+    return now;
+  }
+
+  return existingValue || now;
+}
+
 function toLeadInboxItems(
   leads: LeadRecord[],
   testDriveRequests: TestDriveRequest[],
@@ -1288,6 +1346,7 @@ function toLeadInboxItems(
       phone: item.phone,
       email: item.email,
       message: item.message,
+      vehicleId: item.vehicleId,
       vehicleTitle: item.vehicleTitle,
       source: item.source,
       createdAt: item.createdAt,
@@ -1327,6 +1386,7 @@ function toLeadInboxItems(
       phone: item.phone,
       email: item.email,
       message: item.message,
+      vehicleId: item.vehicleId,
       vehicleTitle: item.vehicleTitle,
       source: item.source,
       createdAt: item.createdAt,
@@ -1359,6 +1419,7 @@ function toLeadInboxItems(
       phone: item.phone,
       email: item.email,
       message: item.message,
+      vehicleId: item.desiredVehicleId,
       vehicleTitle: item.desiredVehicleTitle,
       source: item.source,
       createdAt: item.createdAt,
@@ -1546,10 +1607,12 @@ export async function getLeadInbox(query: {
     tables.tradeInRequests,
     tables.leadWorkflowStates,
   );
-  const items = allItems.filter((item) => {
-    if (filters.type !== "all" && item.type !== filters.type) {
-      return false;
-    }
+  const statusScopedItems =
+    filters.status === "all"
+      ? allItems
+      : allItems.filter((item) => item.status === filters.status);
+  const scopedItems = filterLeadInboxItemsByType(allItems, filters.type);
+  const items = scopedItems.filter((item) => {
 
     if (filters.status !== "all" && item.status !== filters.status) {
       return false;
@@ -1562,7 +1625,8 @@ export async function getLeadInbox(query: {
     items,
     filters,
     summary: buildLeadInboxSummary(allItems),
-    typeCounts: buildLeadInboxTypeCounts(allItems),
+    scopedSummary: buildLeadInboxSummary(scopedItems),
+    typeCounts: buildLeadInboxTypeCounts(statusScopedItems),
   };
 }
 
@@ -1588,11 +1652,21 @@ export async function updateLeadInboxState(
         (item) =>
           item.sourceId === input.sourceId && item.sourceType === input.sourceType,
       );
+      const currentStatus = existing?.status || "new";
+
+      if (!isLeadWorkflowTransitionAllowed(currentStatus, input.status)) {
+        throw new Error(
+          "Move the lead to contacted before follow-up or closing it.",
+        );
+      }
 
       if (existing) {
         existing.status = input.status;
-        existing.lastContactedAt =
-          input.status === "contacted" ? now : existing.lastContactedAt || null;
+        existing.lastContactedAt = resolveLeadLastContactedAt(
+          existing.lastContactedAt,
+          input.status,
+          now,
+        );
         existing.updatedAt = now;
         return clone(existing);
       }
@@ -1602,7 +1676,7 @@ export async function updateLeadInboxState(
         sourceType: input.sourceType,
         sourceId: input.sourceId,
         status: input.status,
-        lastContactedAt: input.status === "contacted" ? now : null,
+        lastContactedAt: resolveLeadLastContactedAt(null, input.status, now),
         updatedAt: now,
       };
 
@@ -1622,6 +1696,12 @@ export async function updateLeadInboxState(
     throw existingStateError;
   }
 
+  const currentStatus = (existingState?.status as LeadWorkflowStatus | undefined) || "new";
+
+  if (!isLeadWorkflowTransitionAllowed(currentStatus, input.status)) {
+    throw new Error("Move the lead to contacted before follow-up or closing it.");
+  }
+
   const { data, error } = await serverClient
     .from("lead_inbox_state")
     .upsert(
@@ -1630,10 +1710,13 @@ export async function updateLeadInboxState(
         source_type: input.sourceType,
         source_id: input.sourceId,
         status: input.status,
-        last_contacted_at:
-          input.status === "contacted"
-            ? now
-            : existingState?.last_contacted_at || null,
+        last_contacted_at: resolveLeadLastContactedAt(
+          existingState?.last_contacted_at
+            ? String(existingState.last_contacted_at)
+            : null,
+          input.status,
+          now,
+        ),
         updated_at: now,
       },
       {

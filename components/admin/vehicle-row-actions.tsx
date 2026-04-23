@@ -22,10 +22,12 @@ export function VehicleRowActions({
   featured,
   status,
   vehicleId,
+  compact = false,
 }: {
   featured: boolean;
   status: VehicleStatus;
   vehicleId: string;
+  compact?: boolean;
 }) {
   const router = useRouter();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -45,6 +47,15 @@ export function VehicleRowActions({
   );
   const hasSuccessfulAction =
     featureState.success || statusState.success || deleteState.success;
+  const menuPanelClass = compact
+    ? "absolute right-0 top-[calc(100%+0.5rem)] z-20 w-56 rounded-xl border border-border/70 bg-white p-2 shadow-[0_20px_48px_rgba(15,23,42,0.14)]"
+    : "absolute right-0 top-[calc(100%+0.75rem)] z-20 w-72 max-h-[70vh] overflow-y-auto rounded-[24px] border border-border/70 bg-white p-3 shadow-[0_20px_48px_rgba(15,23,42,0.14)]";
+  const actionButtonClass = compact
+    ? "h-8 w-full justify-start rounded-md px-2 text-xs"
+    : "w-full justify-start rounded-2xl";
+  const deleteButtonClass = compact
+    ? "h-8 bg-red-600 px-2 text-xs hover:bg-red-700"
+    : "bg-red-600 px-3 py-2 hover:bg-red-700";
 
   function closeActionMenu() {
     setMenuOpen(false);
@@ -81,13 +92,13 @@ export function VehicleRowActions({
     "";
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <div className="relative" ref={menuRef}>
         <Button
           type="button"
           size="sm"
           variant="secondary"
-          className="rounded-full"
+          className={compact ? "h-8 rounded-md px-2 text-xs" : "rounded-full"}
           onClick={() => setMenuOpen((current) => !current)}
           aria-expanded={menuOpen}
           aria-controls={`vehicle-row-actions-${vehicleId}`}
@@ -101,23 +112,25 @@ export function VehicleRowActions({
         {menuOpen ? (
           <div
             id={`vehicle-row-actions-${vehicleId}`}
-            className="absolute right-0 top-[calc(100%+0.75rem)] z-20 w-72 max-h-[70vh] overflow-y-auto rounded-[24px] border border-border/70 bg-white p-3 shadow-[0_20px_48px_rgba(15,23,42,0.14)]"
+            className={menuPanelClass}
           >
             <div className="space-y-1">
-              <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-stone-500">
-                Listing actions
-              </p>
+              {!compact ? (
+                <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-stone-500">
+                  Listing actions
+                </p>
+              ) : null}
 
               <form action={featureAction}>
                 <input type="hidden" name="id" value={vehicleId} />
                 <SubmitButton
                   size="sm"
                   variant="ghost"
-                  className="w-full justify-start rounded-2xl"
+                  className={actionButtonClass}
                   onClick={closeActionMenu}
                 >
                   <Star className="size-4" />
-                  {featured ? "Remove featured" : "Mark featured"}
+                  {featured ? "Unfeature" : "Feature"}
                 </SubmitButton>
               </form>
 
@@ -128,10 +141,10 @@ export function VehicleRowActions({
                   <SubmitButton
                     size="sm"
                     variant="ghost"
-                    className="w-full justify-start rounded-2xl"
+                    className={actionButtonClass}
                     onClick={closeActionMenu}
                   >
-                    Publish listing
+                    Publish
                   </SubmitButton>
                 </form>
               ) : (
@@ -141,10 +154,10 @@ export function VehicleRowActions({
                   <SubmitButton
                     size="sm"
                     variant="ghost"
-                    className="w-full justify-start rounded-2xl"
+                    className={actionButtonClass}
                     onClick={closeActionMenu}
                   >
-                    Move back to unpublished
+                    Unpublish
                   </SubmitButton>
                 </form>
               )}
@@ -156,45 +169,47 @@ export function VehicleRowActions({
                   <SubmitButton
                     size="sm"
                     variant="ghost"
-                    className="w-full justify-start rounded-2xl"
+                    className={actionButtonClass}
                     onClick={closeActionMenu}
                   >
-                    Mark as sold
+                    Mark sold
                   </SubmitButton>
                 </form>
               ) : null}
             </div>
 
-            <div className="mt-3 border-t border-border/70 pt-3">
-              <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-red-700">
-                Danger zone
-              </p>
+            <div className="mt-2 border-t border-border/70 pt-2">
+              {!compact ? (
+                <p className="px-2 text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-red-700">
+                  Danger zone
+                </p>
+              ) : null}
 
               {!confirmDelete ? (
                 <Button
                   size="sm"
                   variant="ghost"
                   type="button"
-                  className="mt-2 w-full justify-start rounded-2xl text-red-700 hover:bg-red-50 hover:text-red-800"
+                  className={`${actionButtonClass} text-red-700 hover:bg-red-50 hover:text-red-800`}
                   onClick={() => setConfirmDelete(true)}
                 >
                   <Trash2 className="size-4" />
                   Delete vehicle
                 </Button>
               ) : (
-                <div className="mt-2 rounded-[20px] border border-red-200 bg-red-50 p-3">
+                <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">
                     Confirm delete
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-red-800">
+                  <p className="mt-1 text-xs leading-5 text-red-800">
                     This removes the listing from the admin inventory.
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <form action={deleteAction}>
                       <input type="hidden" name="id" value={vehicleId} />
                       <SubmitButton
                         size="sm"
-                        className="bg-red-600 px-3 py-2 hover:bg-red-700"
+                        className={deleteButtonClass}
                         onClick={closeActionMenu}
                       >
                         Confirm delete
@@ -204,6 +219,7 @@ export function VehicleRowActions({
                       size="sm"
                       variant="secondary"
                       type="button"
+                      className="h-8 px-2 text-xs"
                       onClick={() => setConfirmDelete(false)}
                     >
                       Cancel

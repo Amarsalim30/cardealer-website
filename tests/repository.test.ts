@@ -9,6 +9,16 @@ async function loadRepositoryModule(options: {
   serverClient?: unknown;
 } = {}) {
   vi.resetModules();
+  const demoState = {
+    leadWorkflowStates: [],
+    leads: [],
+    locations: [],
+    reviews: [],
+    testDriveRequests: [],
+    tradeInRequests: [],
+    vehicles: [],
+    ...options.demoState,
+  };
 
   vi.doMock("@/lib/env", () => ({
     allowLocalDemoMode: options.allowLocalDemoMode ?? false,
@@ -28,16 +38,10 @@ async function loadRepositoryModule(options: {
     createSupabaseServerClient: vi.fn(async () => options.serverClient ?? null),
   }));
   vi.doMock("@/lib/data/demo-store", () => ({
-    getDemoState: vi.fn(() => ({
-      leadWorkflowStates: [],
-      leads: [],
-      locations: [],
-      reviews: [],
-      testDriveRequests: [],
-      tradeInRequests: [],
-      vehicles: [],
-      ...options.demoState,
-    })),
+    getDemoState: vi.fn(() => demoState),
+    mutateDemoState: vi.fn((updater: (state: typeof demoState) => unknown) =>
+      updater(demoState),
+    ),
   }));
 
   return import("@/lib/data/repository");
@@ -129,6 +133,21 @@ describe("repository fail-closed behavior", () => {
         expect.objectContaining({ label: "UTM campaign", value: "march-sale" }),
       ]),
     );
+    expect(result.scopedSummary).toEqual({
+      total: 1,
+      newCount: 0,
+      contactedCount: 0,
+      followUpCount: 1,
+      closedCount: 0,
+    });
+    expect(result.typeCounts).toEqual({
+      all: 1,
+      quote: 1,
+      contact: 0,
+      financing: 0,
+      test_drive: 0,
+      trade_in: 0,
+    });
   });
 
   it("filters the admin vehicle workspace in local demo mode and keeps global summary counts", async () => {
@@ -189,7 +208,7 @@ describe("repository fail-closed behavior", () => {
             negotiable: false,
             mileage: 62000,
             transmission: "Automatic",
-            fuelType: "Petrol",
+            fuelType: "Diesel",
             driveType: null,
             bodyType: "SUV",
             engineCapacity: null,
@@ -224,6 +243,7 @@ describe("repository fail-closed behavior", () => {
       q: "corolla",
       featured: "featured",
       status: "published",
+      fuelType: "Petrol",
     });
 
     expect(result.items).toHaveLength(1);
@@ -233,6 +253,69 @@ describe("repository fail-closed behavior", () => {
       published: 1,
       draft: 1,
       sold: 0,
+    });
+    expect(result.fuelTypes).toEqual(["Diesel", "Petrol"]);
+  });
+
+  it("blocks follow-up until a lead has been contacted", async () => {
+    const repository = await loadRepositoryModule({
+      allowLocalDemoMode: true,
+    });
+
+    await expect(
+      repository.updateLeadInboxState({
+        sourceId: "lead-1",
+        sourceType: "lead",
+        status: "follow_up",
+      }),
+    ).rejects.toThrow("Move the lead to contacted before follow-up or closing it.");
+  });
+
+  it("keeps scoped lead counts truthful to the selected lead type", async () => {
+    const repository = await loadRepositoryModule({
+      allowLocalDemoMode: true,
+      demoState: {
+        leadWorkflowStates: [
+          {
+            id: "workflow-1",
+            sourceType: "lead",
+            sourceId: "lead-1",
+            status: "contacted",
+            lastContactedAt: "2026-03-10T10:00:00.000Z",
+            updatedAt: "2026-03-10T10:00:00.000Z",
+          },
+        ],
+        leads: [
+          {
+            id: "lead-1",
+            leadType: "quote",
+            name: "Jane Doe",
+            phone: "+254700000000",
+            createdAt: "2026-03-10T09:00:00.000Z",
+          },
+          {
+            id: "lead-2",
+            leadType: "contact",
+            name: "John Doe",
+            phone: "+254711111111",
+            createdAt: "2026-03-11T09:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+    const result = await repository.getLeadInbox({
+      type: "quote",
+      status: "all",
+    });
+
+    expect(result.summary.total).toBe(2);
+    expect(result.scopedSummary).toEqual({
+      total: 1,
+      newCount: 0,
+      contactedCount: 1,
+      followUpCount: 0,
+      closedCount: 0,
     });
   });
 });

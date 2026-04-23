@@ -66,6 +66,18 @@ function actionSuccess(message: string, redirectTo?: string) {
   } satisfies ActionState;
 }
 
+type BulkVehicleActionType = "publish" | "unpublish" | "sold" | "delete";
+
+interface BulkVehicleItemResult {
+  id: string;
+  success: boolean;
+  message?: string;
+}
+
+export interface BulkVehicleActionState extends ActionState {
+  results?: BulkVehicleItemResult[];
+}
+
 class VehicleSaveActionError extends Error {}
 
 function isSuperAdmin(session: AdminSession) {
@@ -531,6 +543,111 @@ export async function updateLeadInboxStateAction(
       error instanceof Error ? error.message : "Lead status could not be updated.",
     );
   }
+}
+
+export async function bulkVehicleAction(
+  _prevState: BulkVehicleActionState,
+  formData: FormData,
+): Promise<BulkVehicleActionState> {
+  const session = await requireAdminSession();
+  const action = String(formData.get("action") || "") as BulkVehicleActionType;
+  const ids = [
+    ...new Set(
+      formData
+        .getAll("ids")
+        .map((id) => String(id).trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (!ids.length) {
+    return actionFailure("Select at least one vehicle.");
+  }
+
+  if (!(["publish", "unpublish", "sold", "delete"] as const).includes(action)) {
+    return actionFailure("Bulk action is invalid.");
+  }
+
+  const results: BulkVehicleItemResult[] = [];
+  const slugs = new Set<string>();
+
+  for (const id of ids) {
+    try {
+      if (action === "delete") {
+        const vehicle = await getVehicleById(id, {
+          forceDemo: session.mode === "demo",
+        });
+        await deleteVehicle(id, {
+          forceDemo: session.mode === "demo",
+        });
+
+        if (vehicle?.slug) {
+          slugs.add(vehicle.slug);
+        }
+      } else {
+        const nextStatus =
+          action === "publish"
+            ? "published"
+            : action === "unpublish"
+              ? "unpublished"
+              : "sold";
+        const vehicle = await updateVehicleStatus(id, nextStatus, {
+          forceDemo: session.mode === "demo",
+        });
+
+        if (vehicle?.slug) {
+          slugs.add(vehicle.slug);
+        }
+      }
+
+      results.push({ id, success: true });
+    } catch (error) {
+      results.push({
+        id,
+        success: false,
+        message: error instanceof Error ? error.message : "Action failed.",
+      });
+    }
+  }
+
+  revalidateVehiclePaths();
+  for (const slug of slugs) {
+    revalidatePath(`/cars/${slug}`);
+  }
+  revalidatePath("/admin/vehicles");
+
+  const successCount = results.filter((result) => result.success).length;
+  const failureCount = results.length - successCount;
+  const actionLabel =
+    action === "publish"
+      ? "published"
+      : action === "unpublish"
+        ? "unpublished"
+        : action === "sold"
+          ? "marked sold"
+          : "deleted";
+
+  if (!successCount) {
+    return {
+      success: false,
+      message: `No vehicles were ${actionLabel}.`,
+      results,
+    };
+  }
+
+  if (failureCount) {
+    return {
+      success: false,
+      message: `${successCount} updated, ${failureCount} failed.`,
+      results,
+    };
+  }
+
+  return {
+    success: true,
+    message: `${successCount} vehicle${successCount === 1 ? "" : "s"} ${actionLabel}.`,
+    results,
+  };
 }
 
 export async function createAdminAccountAction(

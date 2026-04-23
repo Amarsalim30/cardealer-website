@@ -83,12 +83,12 @@ test("admin can create a vehicle with direct image upload and manage it from the
   await expect(page).toHaveURL(/\/admin\/vehicles\/[^/?]+\?saved=1$/);
   await expect(page.getByText(/saved just now/i)).toBeVisible();
 
-  await page.getByRole("link", { name: /return to inventory/i }).click();
+  await page.getByRole("button", { name: /return to inventory/i }).click();
   await expect(page).toHaveURL(/\/admin\/vehicles$/);
 
   await page.getByLabel("Search").fill(title);
   await page.getByRole("button", { name: /^apply$/i }).click();
-  await expect(page.getByText(title)).toBeVisible();
+  await expect(page.getByText(title).first()).toBeVisible();
 
   await page.getByRole("button", { name: /actions/i }).click();
   await page.getByRole("button", { name: /delete vehicle/i }).click();
@@ -109,5 +109,131 @@ test("lead inbox remains usable on mobile without falling back to a table", asyn
 
   await expect(page.getByRole("heading", { name: "Lead inbox" })).toBeVisible();
   await expect(page.locator("table")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: /call/i }).first()).toBeVisible();
+  await page.getByRole("button", { name: /open lead from/i }).first().click();
+  await expect(page.getByRole("dialog", { name: /lead detail/i })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Call$/i })).toBeVisible();
+});
+
+test("lead triage updates lead counts on mobile", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsDemoAdmin(page);
+  await page.goto("/admin/leads?status=new");
+
+  const newStatusLink = page.getByRole("link", { name: /^New \d+/ });
+  const contactedStatusLink = page.getByRole("link", { name: /^Contacted \d+/ });
+  const newCountBefore = Number(
+    ((await newStatusLink.textContent()) || "").match(/\d+/)?.[0] || "0",
+  );
+  const contactedCountBefore = Number(
+    ((await contactedStatusLink.textContent()) || "").match(/\d+/)?.[0] || "0",
+  );
+
+  await page.getByRole("button", { name: /open lead from/i }).first().click();
+  await page.getByRole("button", { name: /mark contacted/i }).click();
+
+  await expect
+    .poll(async () => {
+      const text = (await page
+        .getByRole("link", { name: /^New \d+/ })
+        .textContent()) || "";
+      return Number(text.match(/\d+/)?.[0] || "0");
+    })
+    .toBe(newCountBefore - 1);
+  await expect
+    .poll(async () => {
+      const text = (await page
+        .getByRole("link", { name: /^Contacted \d+/ })
+        .textContent()) || "";
+      return Number(text.match(/\d+/)?.[0] || "0");
+    })
+    .toBe(contactedCountBefore + 1);
+});
+
+test("inventory workspace supports compact filters, selection, and reset", async ({
+  page,
+}) => {
+  await loginAsDemoAdmin(page);
+
+  await page.getByLabel("Fuel").selectOption({ label: "Petrol" });
+  await page.getByRole("button", { name: /^apply$/i }).click();
+  await expect(page).toHaveURL(/fuelType=Petrol/);
+
+  await page.getByLabel("Select all visible rows").check();
+  await expect(page.getByText(/selected/)).toBeVisible();
+
+  await page.getByRole("button", { name: /^Publish$/i }).click();
+  await expect(page.getByRole("status")).toContainText(/published/i);
+
+  await page.getByLabel("Search").fill("no-match-filter");
+  await page.getByRole("button", { name: /^apply$/i }).click();
+  await expect(page.getByText(/no vehicles match current filters/i)).toBeVisible();
+  await page.getByRole("link", { name: /reset filters/i }).click();
+  await expect(page).toHaveURL(/\/admin\/vehicles$/);
+});
+
+test("inventory remains usable on mobile with compact rows", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsDemoAdmin(page);
+  await page.goto("/admin/vehicles");
+
+  await expect(page.locator("table").first()).not.toBeVisible();
+  await expect(page.getByRole("link", { name: /edit/i }).first()).toBeVisible();
+});
+
+test("vehicle editor saves staged gallery uploads without leaving pending state", async ({
+  page,
+}) => {
+  await page.route("**/api/admin/cloudinary/sign", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      status: 200,
+      body: JSON.stringify({
+        allowedFormats: ["jpg", "jpeg", "png", "webp"],
+        apiKey: "playwright-key",
+        assetFolder: "editor-gallery-smoke",
+        signature: "playwright-signature",
+        slug: "editor-gallery-smoke",
+        stockCode: "EDITOR-GALLERY-SMOKE",
+        timestamp: 1700000000,
+        uploadUrl:
+          "https://api.cloudinary.com/v1_1/playwright-cloud/image/upload",
+      }),
+    });
+  });
+
+  let uploadCount = 0;
+  await page.route(
+    "https://api.cloudinary.com/v1_1/playwright-cloud/image/upload",
+    async (route) => {
+      uploadCount += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({
+          public_id: `playwright-editor-upload-${uploadCount}`,
+          secure_url: `https://res.cloudinary.com/playwright-cloud/image/upload/playwright-editor-upload-${uploadCount}.jpg`,
+        }),
+      });
+    },
+  );
+
+  await loginAsDemoAdmin(page);
+  await page.goto("/admin/vehicles");
+  await page.getByRole("link", { name: /edit/i }).first().click();
+
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "editor-gallery.jpg",
+    mimeType: "image/jpeg",
+    buffer: Buffer.from("playwright-editor-image"),
+  });
+
+  await expect(page.getByText(/uploads on save/i)).toBeVisible();
+  await page.getByRole("button", { name: /save changes/i }).click();
+
+  await expect.poll(() => uploadCount).toBe(1);
+  await expect(page.getByText(/vehicle saved successfully/i)).toBeVisible();
+  await expect(page.getByText(/saved just now/i)).toBeVisible();
+  await expect(page.getByText(/uploads on save/i)).toHaveCount(0);
 });
