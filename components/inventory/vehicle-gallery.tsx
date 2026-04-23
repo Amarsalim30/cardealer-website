@@ -185,10 +185,10 @@ export function VehicleGallery({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-[36px] border border-border bg-surface shadow-[0_12px_30px_rgba(28,35,43,0.05)] selection:bg-transparent">
+    <div className="space-y-2.5 sm:space-y-4">
+      <div className="relative overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_12px_30px_rgba(28,35,43,0.05)] selection:bg-transparent sm:rounded-[36px]">
         <div
-          className="relative aspect-[4/3] overflow-hidden cursor-zoom-in"
+          className="relative aspect-[5/4] overflow-hidden cursor-zoom-in sm:aspect-[4/3]"
           role="button"
           tabIndex={0}
           aria-label={`Open ${title} photo ${activeIndex + 1} in full screen`}
@@ -221,11 +221,21 @@ export function VehicleGallery({
             sizes="(min-width: 1024px) 58vw, 100vw"
             className="object-cover"
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[rgba(17,24,33,0.35)] via-[rgba(17,24,33,0.1)] to-transparent" />
-          <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3">
-            <div className="rounded-full border border-white/60 bg-white/86 px-3.5 py-1.5 text-xs font-semibold tracking-[0.08em] text-text-primary backdrop-blur-sm">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[rgba(17,24,33,0.35)] via-[rgba(17,24,33,0.1)] to-transparent sm:h-28" />
+          <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 sm:inset-x-4 sm:bottom-4 sm:gap-3">
+            <div className="rounded-full border border-white/60 bg-white/86 px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-text-primary backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-xs sm:tracking-[0.08em]">
               {activeIndex + 1} / {galleryImages.length}
             </div>
+            <button
+              type="button"
+              className="inline-flex items-center rounded-full border border-white/65 bg-white/86 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-text-primary shadow-[0_10px_24px_rgba(28,35,43,0.1)] backdrop-blur-sm transition-colors hover:bg-white sm:px-3.5 sm:py-1.5 sm:text-xs sm:tracking-[0.08em]"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsViewerOpen(true);
+              }}
+            >
+              View all photos
+            </button>
             {galleryImages.length > 1 ? (
               <div className="hidden items-center gap-2 md:flex">
                 <button
@@ -257,7 +267,7 @@ export function VehicleGallery({
       </div>
 
       {galleryImages.length > 1 ? (
-        <div className="hide-scrollbar flex gap-2.5 overflow-x-auto px-1 pb-2">
+        <div className="hide-scrollbar flex gap-2 overflow-x-auto px-0.5 pb-1 sm:gap-2.5 sm:px-1 sm:pb-2">
           {galleryImages.map((image, index) => (
             <button
               key={image.id}
