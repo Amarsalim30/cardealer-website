@@ -19,18 +19,18 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-surface/92 backdrop-blur">
-      <div className="container-shell flex items-center justify-between gap-6 py-3">
-        <Link href="/" className="flex items-center gap-3">
+      <div className="container-shell flex items-center justify-between gap-4 py-2.5 sm:gap-6 sm:py-3">
+        <Link href="/" className="flex items-center gap-2.5 sm:gap-3">
           <Image
             src="/logo.png"
             alt={`${siteConfig.name} logo`}
             width={40}
             height={40}
-            className="size-10 rounded-full border border-border object-cover"
+            className="size-9 rounded-full border border-border object-cover sm:size-10"
             priority
           />
           <div>
-            <p className="text-xl font-semibold leading-none tracking-tight text-text-primary">
+            <p className="text-[1.75rem] font-semibold leading-none tracking-tight text-text-primary sm:text-xl">
               {siteConfig.shortName}
             </p>
             <p className="hidden text-xs uppercase tracking-[0.24em] text-text-secondary sm:block">
@@ -74,13 +74,13 @@ export function SiteHeader() {
             asChild
             variant="secondary"
             size="sm"
-            className="h-9 border-border/70 bg-surface/60 px-3.5 text-text-secondary shadow-none hover:bg-surface-elevated hover:text-text-primary"
+            className="h-8.5 border-border/70 bg-surface/60 px-3 text-text-secondary shadow-none hover:bg-surface-elevated hover:text-text-primary sm:h-9 sm:px-3.5"
           >
             <Link href="/inventory">Inventory</Link>
           </Button>
           <button
             type="button"
-            className="inline-flex size-11 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition-colors hover:bg-surface-elevated"
+            className="inline-flex size-10 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition-colors hover:bg-surface-elevated sm:size-11"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
             aria-label="Toggle navigation"

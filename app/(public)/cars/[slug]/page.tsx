@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MapPin, Phone } from "lucide-react";
+import { ChevronLeft, MapPin, Phone } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/layout/json-ld";
@@ -46,6 +46,22 @@ function buildSummarySpecs(
       label: "Fuel",
       value: vehicle.fuelType,
     },
+  ];
+}
+
+function buildQuickSpecs(
+  vehicle: NonNullable<Awaited<ReturnType<typeof getVehicleBySlug>>>,
+) {
+  return [
+    { label: "Year", value: String(vehicle.year) },
+    {
+      label: "Mileage",
+      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
+    },
+    { label: "Transmission", value: vehicle.transmission },
+    { label: "Fuel", value: vehicle.fuelType },
+    { label: "Body", value: vehicle.bodyType || "On request" },
+    { label: "Status", value: "Available now" },
   ];
 }
 
@@ -194,25 +210,80 @@ export default async function VehicleDetailPage({
   const overviewHighlights = buildOverviewHighlights(vehicle);
   const detailBadges = buildDetailBadges(vehicle);
   const baseVehiclePath = `/cars/${vehicle.slug}`;
+  const quickSpecs = buildQuickSpecs(vehicle);
 
   return (
     <>
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={vehicleJsonLd} />
-      <section className="section-shell pb-24">
-        <div className="container-shell space-y-8">
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-            <div className="min-w-0">
+      <section className="section-shell pb-24 pt-4 sm:pt-8">
+        <div className="container-shell space-y-5 sm:space-y-8">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-8">
+            <div className="min-w-0 space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-text-secondary sm:text-xs">
+                <Link
+                  href="/inventory"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-surface px-3 py-1.5 transition-colors hover:text-text-primary"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Inventory
+                </Link>
+                <p className="truncate text-right text-[0.67rem] tracking-[0.12em] text-text-secondary/90 sm:text-xs sm:tracking-[0.14em]">
+                  Ref {vehicle.stockCode}
+                </p>
+              </div>
+
+              <div className="space-y-2.5 lg:hidden">
+                <div className="flex flex-wrap gap-2">
+                  {detailBadges.map((badge) => (
+                    <Badge
+                      key={`mobile-${badge.label}`}
+                      variant={badge.variant}
+                      className="px-2.5 py-1 text-[0.64rem] tracking-[0.12em]"
+                    >
+                      {badge.label}
+                    </Badge>
+                  ))}
+                </div>
+                <h1 className="text-[1.65rem] font-semibold leading-[1.08] tracking-tight text-text-primary break-words [overflow-wrap:anywhere]">
+                  {vehicle.title}
+                </h1>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="max-w-full text-[1.95rem] font-black leading-[0.95] tracking-tight text-accent [overflow-wrap:anywhere]">
+                    {formatCurrency(vehicle.price)}
+                  </p>
+                  <Badge variant="default" className="shrink-0">
+                    Available now
+                  </Badge>
+                </div>
+              </div>
+
               <VehicleGallery
                 key={vehicle.id}
                 images={vehicle.images}
                 heroImageUrl={vehicle.heroImageUrl}
                 title={vehicle.title}
               />
+
+              <div className="grid grid-cols-2 gap-2.5 rounded-[18px] border border-border/80 bg-surface p-3 lg:hidden">
+                {quickSpecs.map((spec) => (
+                  <div
+                    key={`quick-${spec.label}`}
+                    className="min-w-0 rounded-xl bg-[#F5F7FA] px-2.5 py-2"
+                  >
+                    <p className="text-[0.58rem] font-bold uppercase tracking-[0.12em] text-text-secondary">
+                      {spec.label}
+                    </p>
+                    <p className="mt-0.5 text-[0.82rem] font-semibold leading-tight text-text-primary break-words [overflow-wrap:anywhere]">
+                      {spec.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="min-w-0 space-y-5 lg:sticky lg:top-28 lg:self-start">
-              <div className="flex flex-wrap gap-2">
+              <div className="hidden flex-wrap gap-2 lg:flex">
                 {detailBadges.map((badge) => (
                   <Badge
                     key={badge.label}
@@ -224,7 +295,7 @@ export default async function VehicleDetailPage({
                 ))}
               </div>
 
-              <div>
+              <div className="hidden lg:block">
                 <h1 className="text-[2.15rem] font-semibold leading-[1.06] tracking-tight text-text-primary break-words [overflow-wrap:anywhere] sm:text-[2.45rem] lg:text-5xl">
                   {vehicle.title}
                 </h1>
@@ -239,14 +310,14 @@ export default async function VehicleDetailPage({
                 </div>
               </div>
 
-              <Card className="rounded-[32px] p-6 lg:p-8 xl:p-9">
+              <Card className="rounded-[26px] p-4 sm:p-5 lg:rounded-[32px] lg:p-8 xl:p-9">
                 <p className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-text-secondary">
                   Listed Price
                 </p>
-                <p className="mt-1.5 max-w-full text-[clamp(2.25rem,9vw,4rem)] font-black leading-[0.96] tracking-tight text-accent [overflow-wrap:anywhere]">
+                <p className="mt-1.5 max-w-full text-[clamp(1.95rem,9vw,4rem)] font-black leading-[0.96] tracking-tight text-accent [overflow-wrap:anywhere] lg:text-[clamp(2.25rem,9vw,4rem)]">
                   {formatCurrency(vehicle.price)}
                 </p>
-                <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="mt-3 hidden grid-cols-3 gap-2 lg:grid">
                   {summarySpecs.map((spec) => (
                     <div
                       key={spec.label}
@@ -261,15 +332,15 @@ export default async function VehicleDetailPage({
                     </div>
                   ))}
                 </div>
-                <p className="mt-5 text-[0.85rem] leading-relaxed text-text-secondary">
+                <p className="mt-3 text-[0.82rem] leading-relaxed text-text-secondary lg:mt-5 lg:text-[0.85rem]">
                   Review the photos, then message or call for availability and the next step.
                 </p>
-                <div className="mt-7 grid gap-3.5">
+                <div className="mt-4 grid gap-2.5 lg:mt-7 lg:gap-3.5">
                   <Button
                     asChild
                     variant="whatsapp"
                     size="lg"
-                    className="h-14 w-full rounded-2xl text-base font-bold"
+                    className="h-12 w-full rounded-2xl text-sm font-bold lg:h-14 lg:text-base"
                   >
                     <a href={whatsappUrl} target="_blank" rel="noreferrer">
                       <WhatsAppIcon className="mr-2 size-[1.15rem]" />
@@ -279,14 +350,14 @@ export default async function VehicleDetailPage({
                   <Button
                     asChild
                     variant="secondary"
-                    className="h-14 w-full rounded-2xl text-base font-semibold"
+                    className="h-12 w-full rounded-2xl text-sm font-semibold lg:h-14 lg:text-base"
                   >
                     <a href={siteConfig.phoneHref}>
                       <Phone className="mr-2 size-[1.05rem]" />
                       Call About This Car
                     </a>
                   </Button>
-                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 px-2 text-[0.85rem] font-bold text-text-secondary">
+                  <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-1 text-[0.79rem] font-bold text-text-secondary lg:mt-2 lg:gap-x-6 lg:gap-y-3 lg:px-2 lg:text-[0.85rem]">
                     <Link
                       href={`${baseVehiclePath}?intent=viewing#contact-panel`}
                       className="transition-colors hover:text-accent"
@@ -309,7 +380,7 @@ export default async function VehicleDetailPage({
                     </Link>
                   </div>
                 </div>
-                <div className="mt-5 border-t border-border/80 pt-5">
+                <div className="mt-4 border-t border-border/80 pt-4 lg:mt-5 lg:pt-5">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-text-secondary">
                     Why buyers move quickly
                   </p>
@@ -390,7 +461,11 @@ export default async function VehicleDetailPage({
         </div>
       </section>
 
-      <MobileCtaBar whatsappUrl={whatsappUrl} phoneHref={siteConfig.phoneHref} />
+      <MobileCtaBar
+        whatsappUrl={whatsappUrl}
+        phoneHref={siteConfig.phoneHref}
+        viewingHref={`${baseVehiclePath}?intent=viewing#contact-panel`}
+      />
     </>
   );
 }
