@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Mail, MessageCircle, Phone, X } from "lucide-react";
 
@@ -366,27 +366,18 @@ function LeadDetailContent({
 }
 
 export function LeadInbox({ items }: { items: LeadInboxItem[] }) {
+  const firstLeadKey = items[0] ? getLeadKey(items[0]) : null;
   const [selectedLeadKey, setSelectedLeadKey] = useState<string | null>(
-    items[0] ? getLeadKey(items[0]) : null,
+    firstLeadKey,
   );
-  const selectedItem =
-    items.find((item) => getLeadKey(item) === selectedLeadKey) || null;
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-
-  useEffect(() => {
-    if (!items.length) {
-      setSelectedLeadKey(null);
-      setMobileDetailOpen(false);
-      return;
-    }
-
-    if (
-      !selectedLeadKey ||
-      !items.some((item) => getLeadKey(item) === selectedLeadKey)
-    ) {
-      setSelectedLeadKey(getLeadKey(items[0]));
-    }
-  }, [items, selectedLeadKey]);
+  const activeLeadKey =
+    selectedLeadKey &&
+    items.some((item) => getLeadKey(item) === selectedLeadKey)
+      ? selectedLeadKey
+      : firstLeadKey;
+  const selectedItem =
+    items.find((item) => getLeadKey(item) === activeLeadKey) || null;
 
   if (!items.length) {
     return (
@@ -407,7 +398,7 @@ export function LeadInbox({ items }: { items: LeadInboxItem[] }) {
             <ul className="divide-y divide-border/70">
               {items.map((item) => {
                 const itemKey = getLeadKey(item);
-                const isSelected = itemKey === selectedLeadKey;
+                const isSelected = itemKey === activeLeadKey;
 
                 return (
                   <li key={itemKey}>

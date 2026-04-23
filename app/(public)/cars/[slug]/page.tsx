@@ -5,9 +5,9 @@ import {
   Calendar,
   CarFront,
   CheckCircle2,
+  ChevronLeft,
   Fuel,
   Gauge,
-  Map,
   MapPin,
   Settings2,
   ShieldCheck,
@@ -19,6 +19,7 @@ import { notFound } from "next/navigation";
 import { VehicleEnquiryForm } from "@/components/forms/vehicle-enquiry-form";
 import { MobileCtaBar } from "@/components/inventory/mobile-cta-bar";
 import { ShareVehicleAction } from "@/components/inventory/share-vehicle-action";
+import { SpecGrid } from "@/components/inventory/spec-grid";
 import { VehicleCard } from "@/components/inventory/vehicle-card";
 import { VehicleGallery } from "@/components/inventory/vehicle-gallery";
 import { JsonLd } from "@/components/layout/json-ld";
@@ -56,12 +57,25 @@ type DetailRow = {
   value: string;
 };
 
+function getStockLabel(vehicle: VehicleRecord) {
+  switch (vehicle.stockCategory) {
+    case "available_for_importation":
+      return "Imported unit";
+    case "imported":
+      return "Imported";
+    case "traded_in":
+      return "Trade-in unit";
+    default:
+      return "Local listing";
+  }
+}
+
 function buildDescriptionCopy(description?: string | null) {
   const fallback =
     "Contact sales for the latest photos, condition notes, and viewing guidance before you travel.";
   const normalized = description?.trim() || fallback;
 
-  if (normalized.length <= 200) {
+  if (normalized.length <= 220) {
     return { preview: normalized, remainder: "" };
   }
 
@@ -73,8 +87,8 @@ function buildDescriptionCopy(description?: string | null) {
 
     while (
       index < sentences.length &&
-      preview.length < 200 &&
-      preview.length + sentences[index].length + 1 <= 260
+      preview.length < 220 &&
+      preview.length + sentences[index].length + 1 <= 290
     ) {
       preview = `${preview} ${sentences[index]}`;
       index += 1;
@@ -87,42 +101,31 @@ function buildDescriptionCopy(description?: string | null) {
   }
 
   return {
-    preview: `${normalized.slice(0, 200).trimEnd()}...`,
-    remainder: normalized.slice(200).trimStart(),
+    preview: `${normalized.slice(0, 220).trimEnd()}...`,
+    remainder: normalized.slice(220).trimStart(),
   };
 }
 
 function buildStatusBadges(vehicle: VehicleRecord) {
-  const stockLabel = (() => {
-    switch (vehicle.stockCategory) {
-      case "available_for_importation":
-        return "Imported unit";
-      case "imported":
-        return "Imported";
-      case "traded_in":
-        return "Trade-in unit";
-      default:
-        return "Local listing";
-    }
-  })();
-
   return [
+    vehicle.featured
+      ? {
+          label: "Featured",
+          variant: "default" as const,
+        }
+      : null,
     {
       label: "Verified listing",
       variant: "success" as const,
     },
-    {
-      label: "Available now",
-      variant: "accent" as const,
-    },
     vehicle.negotiable
       ? {
-        label: "Negotiable",
-        variant: "muted" as const,
-      }
+          label: "Negotiable",
+          variant: "muted" as const,
+        }
       : null,
     {
-      label: stockLabel,
+      label: getStockLabel(vehicle),
       variant: "muted" as const,
     },
   ].filter(
@@ -130,9 +133,41 @@ function buildStatusBadges(vehicle: VehicleRecord) {
       value,
     ): value is {
       label: string;
-      variant: "accent" | "muted" | "success";
+      variant: "default" | "muted" | "success";
     } => Boolean(value),
   );
+}
+
+function buildMobileStatusBadges(vehicle: VehicleRecord) {
+  return [
+    {
+      label: "Verified",
+      variant: "success" as const,
+    },
+    vehicle.negotiable
+      ? {
+          label: "Negotiable",
+          variant: "muted" as const,
+        }
+      : {
+          label: getStockLabel(vehicle),
+          variant: "muted" as const,
+        },
+  ];
+}
+
+function buildQuickSpecs(vehicle: VehicleRecord) {
+  return [
+    { label: "Year", value: String(vehicle.year) },
+    {
+      label: "Mileage",
+      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
+    },
+    { label: "Transmission", value: vehicle.transmission },
+    { label: "Fuel", value: vehicle.fuelType },
+    { label: "Location", value: vehicle.location?.name || "Mombasa showroom" },
+    { label: "Status", value: "Available now" },
+  ];
 }
 
 function buildHeroFacts(vehicle: VehicleRecord): HeroFact[] {
@@ -148,21 +183,44 @@ function buildHeroFacts(vehicle: VehicleRecord): HeroFact[] {
       label: "Transmission",
       value: vehicle.transmission,
     },
-    { icon: Fuel, label: "Fuel Type", value: vehicle.fuelType },
-    { icon: Map, label: "Drive Type", value: vehicle.driveType || "On request" },
-    { icon: CarFront, label: "Body Type", value: vehicle.bodyType || "On request" },
+    { icon: Fuel, label: "Fuel", value: vehicle.fuelType },
+    { icon: CarFront, label: "Body", value: vehicle.bodyType || "On request" },
+    {
+      icon: MapPin,
+      label: "Location",
+      value: vehicle.location?.name || "Mombasa showroom",
+    },
   ];
 }
 
-function buildStandoutHeading(vehicle: VehicleRecord) {
-  return `Why this ${vehicle.model} stands out`;
+function buildMobileQuickSpecs(vehicle: VehicleRecord): HeroFact[] {
+  return [
+    {
+      icon: MapPin,
+      label: "Location",
+      value: vehicle.location?.name || "Mombasa showroom",
+    },
+    {
+      icon: Gauge,
+      label: "Mileage",
+      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
+    },
+    {
+      icon: Fuel,
+      label: "Fuel",
+      value: vehicle.fuelType,
+    },
+    {
+      icon: Settings2,
+      label: "Transmission",
+      value: vehicle.transmission,
+    },
+  ];
 }
 
 function buildHeroTrustLine(vehicle: VehicleRecord) {
-  const location = vehicle.location?.name || "Mombasa";
-
   return [
-    `Viewing in ${location}`,
+    `Viewing in ${vehicle.location?.name || "Mombasa showroom"}`,
     "Fast response during working hours",
     "Trade-ins welcome",
   ];
@@ -170,49 +228,55 @@ function buildHeroTrustLine(vehicle: VehicleRecord) {
 
 function buildVehicleSummary(vehicle: VehicleRecord) {
   const mileage =
-    vehicle.mileage > 0 ? `${formatMileage(vehicle.mileage)}` : "mileage shared on request";
-  const drive = vehicle.driveType ? `, ${vehicle.driveType}` : "";
+    vehicle.mileage > 0
+      ? formatMileage(vehicle.mileage)
+      : "mileage shared on request";
 
   return [
-    `${vehicle.year} ${vehicle.make} ${vehicle.model} with ${mileage}, ${vehicle.fuelType.toLowerCase()} power, ${vehicle.transmission.toLowerCase()} transmission${drive}.`,
-    "Comfortable for daily driving, family travel, and longer road trips, with viewing and paperwork support available in Mombasa.",
+    `${vehicle.year} ${vehicle.make} ${vehicle.model} with ${mileage}, ${vehicle.fuelType.toLowerCase()} power, and ${vehicle.transmission.toLowerCase()} transmission.`,
+    "Buyers can confirm price, viewing, paperwork support, and trade-in guidance before travelling.",
   ].join(" ");
 }
 
-function buildAboutHighlights(vehicle: VehicleRecord) {
+function buildBuyerHighlights(vehicle: VehicleRecord) {
   return [
     vehicle.condition
-      ? `${vehicle.condition} condition notes can be confirmed before you leave for the viewing.`
-      : "Ask sales for the latest condition notes before viewing.",
+      ? `${vehicle.condition} condition notes can be confirmed before you travel for viewing.`
+      : "Ask sales for the latest condition notes before planning your visit.",
     vehicle.fuelType.toLowerCase() === "diesel"
       ? "Diesel running suits longer trips, highway use, and upcountry travel."
-      : `${vehicle.fuelType} running keeps daily use and weekend trips straightforward.`,
+      : `${vehicle.fuelType} running keeps daily use and weekend travel straightforward.`,
     vehicle.transmission === "Automatic"
-      ? "Automatic transmission is easier in traffic and everyday driving."
+      ? "Automatic transmission makes traffic and everyday driving easier."
       : `${vehicle.transmission} transmission suits buyers who prefer direct control.`,
-    vehicle.driveType && /awd|4wd|4x4/i.test(vehicle.driveType)
-      ? `${vehicle.driveType} setup adds confidence on mixed road surfaces.`
-      : vehicle.bodyType && /suv|pickup/i.test(vehicle.bodyType)
-        ? `${vehicle.bodyType} shape gives space and road presence many buyers want.`
-        : "Trade-in and viewing support can be confirmed before a physical visit.",
+    vehicle.driveType
+      ? `${vehicle.driveType} setup can be confirmed during viewing.`
+      : "Drive setup details are available on request.",
+    "Trade-in, finance guidance, and next-step paperwork can all be discussed before the visit.",
   ];
 }
 
 function buildKeyFeatures(vehicle: VehicleRecord) {
   const haystack = `${vehicle.title} ${vehicle.description}`.toLowerCase();
   const featureCatalog = [
-    { label: "Reverse Camera", keywords: ["reverse camera", "rear camera", "backup camera"] },
+    {
+      label: "Reverse Camera",
+      keywords: ["reverse camera", "rear camera", "backup camera"],
+    },
     { label: "Sunroof", keywords: ["sunroof", "moonroof"] },
     { label: "Leather Seats", keywords: ["leather seats", "leather interior"] },
     { label: "Alloy Wheels", keywords: ["alloy wheels"] },
     { label: "Bluetooth", keywords: ["bluetooth"] },
     { label: "Navigation", keywords: ["navigation", "gps"] },
     { label: "Parking Sensors", keywords: ["parking sensors", "park sensors"] },
-    { label: "Push Start", keywords: ["push start", "keyless start", "smart key"] },
+    { label: "Push Start", keywords: ["push start", "keyless start"] },
     { label: "Air Conditioning", keywords: ["air conditioning", "a/c", "ac"] },
     { label: "ABS Brakes", keywords: ["abs brakes", "abs"] },
     { label: "Airbags", keywords: ["airbags", "air bags"] },
-    { label: "Entertainment System", keywords: ["entertainment system", "infotainment"] },
+    {
+      label: "Entertainment System",
+      keywords: ["entertainment system", "infotainment"],
+    },
   ] as const;
 
   const features: string[] = [];
@@ -241,35 +305,20 @@ function buildKeyFeatures(vehicle: VehicleRecord) {
   return features.slice(0, 8);
 }
 
-function buildSpecificationRows(vehicle: VehicleRecord): DetailRow[] {
-  return [
-    { label: "Model Year", value: String(vehicle.year) },
-    {
-      label: "Mileage",
-      value: vehicle.mileage > 0 ? formatMileage(vehicle.mileage) : "On request",
-    },
-    {
-      label: "Engine Capacity",
-      value: vehicle.engineCapacity || "On request",
-    },
-    { label: "Fuel Type", value: vehicle.fuelType },
-    { label: "Transmission", value: vehicle.transmission },
-    { label: "Drive Type", value: vehicle.driveType || "On request" },
-    { label: "Body Type", value: vehicle.bodyType || "On request" },
-    { label: "Exterior Color", value: vehicle.color || "On request" },
-  ];
-}
-
 function buildConfidenceRows(vehicle: VehicleRecord): DetailRow[] {
   const listingType =
     vehicle.stockCategory === "traded_in"
       ? "Trade-in unit"
-      : vehicle.stockCategory === "available_for_importation" || vehicle.stockCategory === "imported"
+      : vehicle.stockCategory === "available_for_importation" ||
+          vehicle.stockCategory === "imported"
         ? "Imported vehicle"
         : "Local listing";
 
   return [
-    { label: "Registration status", value: vehicle.condition || "Shared before viewing" },
+    {
+      label: "Registration status",
+      value: vehicle.condition || "Shared before viewing",
+    },
     { label: "Listing type", value: listingType },
     {
       label: "Viewing location",
@@ -285,18 +334,18 @@ function buildReassuranceItems() {
   return [
     {
       title: "Verified listings",
-      description: "Key facts and pricing shown clearly before you enquire.",
+      description: "Key facts and pricing are clear before you enquire.",
     },
     {
-      title: "Fast response",
-      description: "WhatsApp and calls are handled daily during working hours.",
+      title: "Fast contact path",
+      description: "WhatsApp, call, and viewing actions stay one tap away.",
     },
     {
-      title: "Paperwork support",
-      description: "Ask about logbook checks, transfer questions, and what to bring before you visit.",
+      title: "Viewing support",
+      description: "Confirm timing, location, and paperwork support before travelling.",
     },
     {
-      title: "Trade-in support",
+      title: "Trade-in help",
       description: "Ask about valuing your current car as part of the deal.",
     },
   ];
@@ -334,44 +383,49 @@ function VehicleHeroFactGrid({ facts }: { facts: HeroFact[] }) {
 }
 
 function VehicleOverviewCard({
-  heading,
   summary,
   details,
   highlights,
   features,
-  rows,
+  vehicle,
 }: {
-  heading: string;
   summary: string;
   details: string;
   highlights: string[];
   features: string[];
-  rows: DetailRow[];
+  vehicle: VehicleRecord;
 }) {
   return (
     <Card className="rounded-[30px] bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)] lg:p-7">
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div>
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
             Vehicle overview
           </p>
           <h2 className="mt-2 text-[1.45rem] font-semibold leading-tight tracking-[-0.04em] text-text-primary">
-            {heading}
+            What buyers should know first
           </h2>
-          <p className="mt-4 max-w-3xl text-[0.98rem] leading-7 text-text-secondary">{summary}</p>
+          <p className="mt-4 max-w-3xl text-[0.98rem] leading-7 text-text-secondary">
+            {summary}
+          </p>
 
           {details ? (
             <details className="mt-4 group">
-              <summary className="cursor-pointer text-sm font-semibold text-accent marker:hidden list-none">
-                More description
+              <summary className="list-none cursor-pointer text-sm font-semibold text-accent marker:hidden">
+                Read full description
               </summary>
-              <p className="mt-3 text-sm leading-7 text-text-secondary">{details}</p>
+              <p className="mt-3 text-sm leading-7 text-text-secondary">
+                {details}
+              </p>
             </details>
           ) : null}
 
           <ul className="mt-5 grid gap-3 sm:grid-cols-2">
             {highlights.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm leading-6 text-text-primary">
+              <li
+                key={item}
+                className="flex items-start gap-3 text-sm leading-6 text-text-primary"
+              >
                 <CheckCircle2 className="mt-0.5 size-4.5 shrink-0 text-accent" />
                 <span>{item}</span>
               </li>
@@ -379,40 +433,33 @@ function VehicleOverviewCard({
           </ul>
         </div>
 
-        <div>
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-            Key features
-          </p>
-          <ul className="mt-4 grid gap-x-5 gap-y-3 sm:grid-cols-2 xl:grid-cols-1">
-            {features.map((feature) => (
-              <li key={feature} className="flex items-center gap-3 text-sm font-medium text-text-primary">
-                <CheckCircle2 className="size-4.5 shrink-0 text-accent" />
-                <span>{feature}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+        <div className="space-y-6">
+          <div>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+              Key features
+            </p>
+            <ul className="mt-4 grid gap-x-5 gap-y-3 sm:grid-cols-2 xl:grid-cols-1">
+              {features.map((feature) => (
+                <li
+                  key={feature}
+                  className="flex items-center gap-3 text-sm font-medium text-text-primary"
+                >
+                  <CheckCircle2 className="size-4.5 shrink-0 text-accent" />
+                  <span>{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-      <div className="mt-8 bg-surface-elevated/55 px-4 py-5 sm:rounded-[22px] sm:px-5">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-          Specifications
-        </p>
-
-        <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
-          {rows.map((row) => (
-            <div key={row.label} className="border-b border-border/40 pb-3">
-              <dt className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">
-                {row.label}
-              </dt>
-              <dd className="mt-2 text-sm font-semibold text-text-primary">{row.value}</dd>
+          <div>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+              Full specification
+            </p>
+            <div className="mt-4">
+              <SpecGrid vehicle={vehicle} />
             </div>
-          ))}
-        </dl>
-
-        <p className="mt-4 text-xs text-text-secondary">
-          Vehicle details are shared in good faith and confirmed during viewing.
-        </p>
+          </div>
+        </div>
       </div>
     </Card>
   );
@@ -439,9 +486,6 @@ function VehicleSupportPanel({
   tradeInHref: string;
   viewingHref: string;
 }) {
-  const actionClassName =
-    "flex w-full items-center justify-between gap-3 rounded-[18px] bg-surface px-4 py-3 text-left text-sm font-semibold text-text-primary shadow-[0_10px_22px_rgba(15,23,42,0.03)] transition-colors hover:bg-surface-elevated";
-
   return (
     <Card className="rounded-[30px] bg-[linear-gradient(180deg,_rgba(255,255,255,0.98),_rgba(247,249,251,0.96))] p-6 shadow-[0_20px_50px_rgba(15,23,42,0.05)] lg:p-7">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -487,13 +531,37 @@ function VehicleSupportPanel({
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-text-secondary">
                   {row.label}
                 </p>
-                <p className="mt-1.5 text-sm font-semibold text-text-primary">{row.value}</p>
+                <p className="mt-1.5 text-sm font-semibold text-text-primary">
+                  {row.value}
+                </p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
+      <div className="mt-5 grid gap-3 lg:grid-cols-2">
+        <Button asChild variant="whatsapp" className="w-full rounded-[18px]">
+          <Link href={askHref}>Ask about price</Link>
+        </Button>
+        <Button asChild variant="secondary" className="w-full rounded-[18px]">
+          <Link href={viewingHref}>Book viewing</Link>
+        </Button>
+        <Button asChild variant="secondary" className="w-full rounded-[18px]">
+          <Link href={tradeInHref}>Start trade-in</Link>
+        </Button>
+        {mapUrl ? (
+          <Button asChild variant="ghost" className="w-full rounded-[18px]">
+            <a href={mapUrl} target="_blank" rel="noreferrer">
+              Open location
+            </a>
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="mt-3">
+        <ShareVehicleAction title={title} url={shareUrl} />
+      </div>
     </Card>
   );
 }
@@ -511,7 +579,9 @@ function ReassuranceBand() {
             </div>
             <div>
               <p className="text-sm font-semibold text-text-primary">{item.title}</p>
-              <p className="mt-1 text-sm leading-6 text-text-secondary">{item.description}</p>
+              <p className="mt-1 text-sm leading-6 text-text-secondary">
+                {item.description}
+              </p>
             </div>
           </div>
         ))}
@@ -574,17 +644,18 @@ export default async function VehicleDetailPage({
     siteConfig.whatsappNumber,
   );
   const shareUrl = absoluteUrl(vehiclePath);
-  const descriptionCopy = buildDescriptionCopy(vehicle.description);
-  const aboutHighlights = buildAboutHighlights(vehicle);
+  const quickSpecs = buildQuickSpecs(vehicle);
   const heroFacts = buildHeroFacts(vehicle);
   const detailBadges = buildStatusBadges(vehicle);
-  const keyFeatures = buildKeyFeatures(vehicle);
-  const specificationRows = buildSpecificationRows(vehicle);
-  const confidenceRows = buildConfidenceRows(vehicle);
+  const mobileBadges = buildMobileStatusBadges(vehicle);
+  const mobileQuickSpecs = buildMobileQuickSpecs(vehicle);
   const heroTrustLine = buildHeroTrustLine(vehicle);
-  const standoutHeading = buildStandoutHeading(vehicle);
-  const vehicleSummary = buildVehicleSummary(vehicle);
-  const extendedDescription = [descriptionCopy.preview, descriptionCopy.remainder]
+  const summary = buildVehicleSummary(vehicle);
+  const highlights = buildBuyerHighlights(vehicle);
+  const keyFeatures = buildKeyFeatures(vehicle);
+  const confidenceRows = buildConfidenceRows(vehicle);
+  const descriptionCopy = buildDescriptionCopy(vehicle.description);
+  const details = [descriptionCopy.preview, descriptionCopy.remainder]
     .filter(Boolean)
     .join(" ");
   const averageRating = reviews.length
@@ -596,9 +667,9 @@ export default async function VehicleDetailPage({
       <JsonLd data={breadcrumbJsonLd} />
       <JsonLd data={vehicleJsonLd} />
 
-      <main className="section-shell pb-24 pt-6 sm:pt-8">
-        <div className="container-shell space-y-6 lg:space-y-8">
-          <nav aria-label="Breadcrumb" className="text-sm">
+      <main className="section-shell pb-24 pt-2.5 sm:pt-8">
+        <div className="container-shell space-y-4 lg:space-y-8">
+          <nav aria-label="Breadcrumb" className="hidden text-sm lg:block">
             <ol className="flex flex-wrap items-center gap-2 text-[0.82rem] text-text-secondary">
               <li>
                 <Link href="/" className="transition-colors hover:text-accent">
@@ -621,8 +692,18 @@ export default async function VehicleDetailPage({
             </ol>
           </nav>
 
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_390px] xl:items-start">
-            <div className="min-w-0">
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_390px] xl:items-start">
+            <div className="min-w-0 space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-text-secondary lg:hidden">
+                <Link
+                  href="/inventory"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-surface px-3 py-1.5 text-[0.68rem] tracking-[0.14em] transition-colors hover:text-text-primary"
+                >
+                  <ChevronLeft className="size-3.5" />
+                  Inventory
+                </Link>
+              </div>
+
               <VehicleGallery
                 key={vehicle.id}
                 images={vehicle.images}
@@ -630,10 +711,60 @@ export default async function VehicleDetailPage({
                 title={vehicle.title}
                 compact
               />
+
+              <div className="space-y-3 lg:hidden">
+                <div className="flex flex-wrap gap-2">
+                  {mobileBadges.map((badge) => (
+                    <Badge
+                      key={`mobile-${badge.label}`}
+                      variant={badge.variant}
+                      className="px-2.5 py-1 text-[0.62rem] tracking-[0.12em]"
+                    >
+                      {badge.label}
+                    </Badge>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <h1 className="line-clamp-2 text-[1.5rem] font-semibold leading-[1.04] tracking-tight text-text-primary">
+                    {vehicle.title}
+                  </h1>
+                  <p className="text-[2.35rem] font-black leading-[0.92] tracking-[-0.05em] text-accent [overflow-wrap:anywhere]">
+                    {formatCurrency(vehicle.price)}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant="default"
+                      className="px-3 py-1 text-[0.62rem] tracking-[0.14em]"
+                    >
+                      Available now
+                    </Badge>
+                    <p className="text-[0.78rem] font-medium text-text-secondary">
+                      {vehicle.location?.name || "Mombasa showroom"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[18px] border border-border/80 bg-surface px-3 py-2.5">
+                  {mobileQuickSpecs.map((spec) => {
+                    const Icon = spec.icon;
+
+                    return (
+                      <div
+                        key={`mobile-quick-${spec.label}`}
+                        className="inline-flex items-center gap-1.5 text-[0.8rem] font-medium text-text-primary"
+                      >
+                        <Icon className="size-3.5 text-text-secondary/70" />
+                        <span>{spec.value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            <Card className="rounded-[30px] bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] xl:sticky xl:top-24 lg:p-6">
-              <div className="flex flex-wrap gap-2">
+            <div className="space-y-5 xl:sticky xl:top-24 xl:self-start">
+              <div className="hidden flex-wrap gap-2 lg:flex">
                 {detailBadges.map((badge) => (
                   <Badge key={badge.label} variant={badge.variant}>
                     {badge.label}
@@ -641,52 +772,66 @@ export default async function VehicleDetailPage({
                 ))}
               </div>
 
-              <div className="mt-5">
-                <h1 className="max-w-[12ch] text-balance text-[clamp(2.2rem,4vw,3.45rem)] font-semibold leading-[0.96] tracking-[-0.055em] text-text-primary">
+              <div className="hidden lg:block">
+                <h1 className="text-[2.15rem] font-semibold leading-[1.04] tracking-tight text-text-primary [overflow-wrap:anywhere] xl:text-5xl">
                   {vehicle.title}
                 </h1>
-                <p className="mt-3 text-[clamp(2rem,3vw,2.85rem)] font-semibold leading-none tracking-[-0.05em] text-accent">
+                <div className="mt-5 flex flex-wrap items-center gap-4 text-[0.85rem] font-medium text-text-secondary">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-surface-elevated px-3 py-1.5">
+                    <MapPin className="size-[1.1rem] text-text-secondary/70" />
+                    {vehicle.location?.name || "Mombasa showroom"}
+                  </div>
+                  <span className="rounded-full border border-border bg-surface px-3 py-1.5 text-[0.7rem] font-bold uppercase tracking-[0.18em] text-text-secondary">
+                    Ref {vehicle.stockCode}
+                  </span>
+                </div>
+              </div>
+
+              <Card className="rounded-[30px] bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)] lg:p-6">
+                <p className="text-[0.75rem] font-bold uppercase tracking-[0.18em] text-text-secondary">
+                  Listed price
+                </p>
+                <p className="mt-2 text-[clamp(2rem,3vw,2.85rem)] font-semibold leading-none tracking-[-0.05em] text-accent">
                   {formatCurrency(vehicle.price)}
                 </p>
-              </div>
 
-              <div className="mt-5">
-                <VehicleHeroFactGrid facts={heroFacts} />
-              </div>
+                <div className="mt-5 hidden lg:block">
+                  <VehicleHeroFactGrid facts={heroFacts} />
+                </div>
 
-              <p className="mt-4 text-sm font-medium text-text-primary">
-                Ask for price confirmation, viewing, or a quick walk-around video.
-              </p>
-              <div className="mt-5 space-y-3">
-                <Button asChild variant="whatsapp" className="w-full rounded-[18px]">
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                    Inquire on WhatsApp
-                  </a>
-                </Button>
-                <Button asChild variant="secondary" className="w-full rounded-[18px]">
-                  <a href={siteConfig.phoneHref}>Call: {siteConfig.phoneDisplay}</a>
-                </Button>
-                <Button asChild variant="secondary" className="w-full rounded-[18px]">
-                  <Link href={`${vehiclePath}?intent=viewing#contact-panel`}>
-                    Schedule a Viewing
-                  </Link>
-                </Button>
-              </div>
+                <p className="mt-5 text-sm font-medium text-text-primary">
+                  Ask for price confirmation, viewing, or a quick walk-around video.
+                </p>
+                <div className="mt-5 space-y-3">
+                  <Button asChild variant="whatsapp" className="w-full rounded-[18px]">
+                    <a href={whatsappUrl} target="_blank" rel="noreferrer">
+                      WhatsApp this car
+                    </a>
+                  </Button>
+                  <Button asChild variant="secondary" className="w-full rounded-[18px]">
+                    <a href={siteConfig.phoneHref}>Call: {siteConfig.phoneDisplay}</a>
+                  </Button>
+                  <Button asChild variant="secondary" className="w-full rounded-[18px]">
+                    <Link href={`${vehiclePath}?intent=viewing#contact-panel`}>
+                      Book a viewing
+                    </Link>
+                  </Button>
+                </div>
 
-              <p className="mt-4 text-sm font-medium text-text-secondary">
-                {heroTrustLine.join(" • ")}
-              </p>
-            </Card>
+                <p className="mt-4 text-sm font-medium text-text-secondary">
+                  {heroTrustLine.join(" • ")}
+                </p>
+              </Card>
+            </div>
           </section>
 
           <section>
             <VehicleOverviewCard
-              heading={standoutHeading}
-              summary={vehicleSummary}
-              details={extendedDescription}
-              highlights={aboutHighlights}
+              summary={summary}
+              details={details}
+              highlights={highlights}
               features={keyFeatures}
-              rows={specificationRows}
+              vehicle={vehicle}
             />
           </section>
 
@@ -695,12 +840,12 @@ export default async function VehicleDetailPage({
               averageRating={averageRating}
               confidenceRows={confidenceRows}
               askHref={`${vehiclePath}#contact-panel`}
+              mapUrl={vehicle.location?.mapUrl}
+              reviewCount={reviews.length}
               shareUrl={shareUrl}
               title={vehicle.title}
               tradeInHref={`/trade-in?vehicle=${vehicle.slug}`}
               viewingHref={`${vehiclePath}?intent=viewing#contact-panel`}
-              mapUrl={vehicle.location?.mapUrl}
-              reviewCount={reviews.length}
             />
           </section>
 
@@ -756,8 +901,7 @@ export default async function VehicleDetailPage({
       <MobileCtaBar
         whatsappUrl={whatsappUrl}
         phoneHref={siteConfig.phoneHref}
-        primaryHref={`${vehiclePath}?intent=viewing#contact-panel`}
-        primaryLabel="Viewing"
+        viewingHref={`${vehiclePath}?intent=viewing#contact-panel`}
       />
     </>
   );

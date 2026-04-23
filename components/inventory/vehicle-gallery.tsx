@@ -10,6 +10,39 @@ import type { VehicleImage } from "@/types/dealership";
 
 type GalleryImage = VehicleImage;
 
+const galleryCategoryMap = [
+  {
+    label: "Exterior",
+    keywords: ["exterior", "front", "rear", "side", "outside"],
+  },
+  {
+    label: "Interior",
+    keywords: ["interior", "cabin", "inside", "rear seat", "door panel"],
+  },
+  {
+    label: "Dashboard",
+    keywords: ["dashboard", "screen", "console", "cluster", "steering"],
+  },
+  {
+    label: "Seats",
+    keywords: ["seat", "seats", "upholstery", "bench"],
+  },
+  {
+    label: "Engine",
+    keywords: ["engine", "bonnet", "hood"],
+  },
+  {
+    label: "Documents",
+    keywords: [
+      "logbook",
+      "document",
+      "documents",
+      "service book",
+      "paperwork",
+    ],
+  },
+] as const;
+
 function normalizeGalleryImages(
   images: VehicleImage[],
   title: string,
@@ -54,11 +87,7 @@ function normalizeGalleryImages(
   });
 }
 
-function getGalleryAltText(
-  image: GalleryImage,
-  index: number,
-  title: string,
-) {
+function getGalleryAltText(image: GalleryImage, index: number, title: string) {
   return image.altText?.trim() || `${title} photo ${index + 1}`;
 }
 
@@ -79,15 +108,6 @@ function getGalleryImageUrl(
     gravity: "auto",
   });
 }
-
-const galleryCategoryMap = [
-  { label: "Exterior", keywords: ["exterior", "front", "rear", "side", "outside"] },
-  { label: "Interior", keywords: ["interior", "cabin", "inside", "rear seat", "door panel"] },
-  { label: "Dashboard", keywords: ["dashboard", "screen", "console", "cluster", "steering"] },
-  { label: "Seats", keywords: ["seat", "seats", "upholstery", "bench"] },
-  { label: "Engine", keywords: ["engine", "bonnet", "hood"] },
-  { label: "Documents", keywords: ["logbook", "document", "documents", "service book", "paperwork"] },
-] as const;
 
 function buildGalleryCategories(images: GalleryImage[], title: string) {
   const normalizedTitle = title.toLowerCase();
@@ -133,8 +153,7 @@ export function VehicleGallery({
 
   const showPrevious = () => {
     setActiveIndex(
-      (current) =>
-        (current - 1 + galleryImages.length) % galleryImages.length,
+      (current) => (current - 1 + galleryImages.length) % galleryImages.length,
     );
   };
 
@@ -184,8 +203,7 @@ export function VehicleGallery({
 
       if (galleryImages.length > 1 && event.key === "ArrowLeft") {
         setActiveIndex(
-          (current) =>
-            (current - 1 + galleryImages.length) % galleryImages.length,
+          (current) => (current - 1 + galleryImages.length) % galleryImages.length,
         );
       }
 
@@ -223,12 +241,12 @@ export function VehicleGallery({
   }
 
   return (
-    <div className={cn(compact ? "space-y-3" : "space-y-4")}>
-      <div className="relative overflow-hidden rounded-[28px] border border-border bg-surface shadow-[0_12px_30px_rgba(28,35,43,0.05)] selection:bg-transparent">
+    <div className={cn(compact ? "space-y-2.5 sm:space-y-4" : "space-y-4")}>
+      <div className="relative overflow-hidden rounded-[24px] border border-border bg-surface shadow-[0_12px_30px_rgba(28,35,43,0.05)] selection:bg-transparent sm:rounded-[28px]">
         <div
           className={cn(
             "relative overflow-hidden cursor-zoom-in",
-            compact ? "aspect-[4/3] lg:aspect-[5/4] xl:aspect-[16/11]" : "aspect-[4/3]",
+            compact ? "aspect-[5/4] sm:aspect-[4/3] xl:aspect-[16/11]" : "aspect-[4/3]",
           )}
           role="button"
           tabIndex={0}
@@ -266,11 +284,21 @@ export function VehicleGallery({
             }
             className="object-cover"
           />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[rgba(17,24,33,0.35)] via-[rgba(17,24,33,0.1)] to-transparent" />
-          <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3">
-            <div className="rounded-full border border-white/60 bg-white/86 px-3.5 py-1.5 text-xs font-semibold tracking-[0.08em] text-text-primary backdrop-blur-sm">
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[rgba(17,24,33,0.35)] via-[rgba(17,24,33,0.1)] to-transparent sm:h-28" />
+          <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2 sm:inset-x-4 sm:bottom-4 sm:gap-3">
+            <div className="rounded-full border border-white/60 bg-white/86 px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-text-primary backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-xs sm:tracking-[0.08em]">
               {activeIndex + 1} / {galleryImages.length}
             </div>
+            <button
+              type="button"
+              className="inline-flex items-center rounded-full border border-white/65 bg-white/86 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.06em] text-text-primary shadow-[0_10px_24px_rgba(28,35,43,0.1)] backdrop-blur-sm transition-colors hover:bg-white sm:px-3.5 sm:py-1.5 sm:text-xs sm:tracking-[0.08em]"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsViewerOpen(true);
+              }}
+            >
+              View all photos
+            </button>
             {galleryImages.length > 1 ? (
               <div className="hidden items-center gap-2 md:flex">
                 <button
@@ -302,22 +330,9 @@ export function VehicleGallery({
       </div>
 
       {galleryImages.length > 1 ? (
-        <div className="space-y-3 px-1 pb-2">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-text-secondary">
-              Browse the key photos first, then open the full gallery.
-            </p>
-            <button
-              type="button"
-              className="inline-flex items-center rounded-full border border-border/80 bg-white px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:border-accent/35 hover:text-accent"
-              onClick={() => setIsViewerOpen(true)}
-            >
-              View all photos ({galleryImages.length})
-            </button>
-          </div>
-
+        <div className="space-y-3 px-0.5 pb-1 sm:px-1 sm:pb-2">
           {galleryCategories.length ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="hide-scrollbar flex gap-2 overflow-x-auto">
               {galleryCategories.map((category) => (
                 <button
                   key={category.label}
@@ -336,14 +351,14 @@ export function VehicleGallery({
             </div>
           ) : null}
 
-          <div className="hide-scrollbar flex gap-3 overflow-x-auto">
+          <div className="hide-scrollbar flex gap-2 overflow-x-auto sm:gap-2.5">
             {galleryImages.map((image, index) => (
               <button
                 key={image.id}
                 type="button"
                 className={cn(
-                  "relative aspect-[4/3] shrink-0 overflow-hidden rounded-[14px] border-2 shadow-sm transition-all",
-                  compact ? "w-28 sm:w-32 lg:w-36" : "w-28 sm:w-32",
+                  "relative aspect-[4/3] shrink-0 overflow-hidden rounded-[12px] border-2 shadow-sm transition-all",
+                  compact ? "w-24 sm:w-28 lg:w-32" : "w-28 sm:w-32",
                   activeImage?.id === image.id
                     ? "border-accent shadow-[0_10px_24px_rgba(23,58,94,0.12)]"
                     : "border-transparent hover:border-accent/50 hover:shadow-md",
@@ -356,7 +371,7 @@ export function VehicleGallery({
                   src={getGalleryImageUrl(image, "thumb")}
                   alt={getGalleryAltText(image, index, title)}
                   fill
-                  sizes="128px"
+                  sizes="112px"
                   className="object-cover"
                 />
               </button>
@@ -370,7 +385,10 @@ export function VehicleGallery({
           className="fixed inset-0 z-50 bg-[rgba(17,24,33,0.94)] p-3 sm:p-5"
           onClick={() => setIsViewerOpen(false)}
         >
-          <div className="flex h-full flex-col gap-3" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="flex h-full flex-col gap-3"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-xs font-semibold tracking-[0.08em] text-white backdrop-blur-sm">
                 {activeIndex + 1} / {galleryImages.length}

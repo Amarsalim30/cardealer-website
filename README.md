@@ -1,6 +1,6 @@
 # Cardealer Website
 
-A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CSS, Supabase, Cloudinary, and Resend. The project is designed for fast inventory browsing, strong lead capture, and a minimal admin workflow.
+A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CSS, Supabase, and Cloudinary, with Resend supported as an optional notification layer. The project is designed for fast inventory browsing, strong lead capture, and a minimal admin workflow.
 
 ## Stack
 - Next.js 16 App Router
@@ -8,14 +8,14 @@ A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CS
 - Tailwind CSS v4
 - Supabase
 - Cloudinary
-- Resend
+- Resend (optional / deferred)
 - Vitest
 
 ## Local Setup
 1. Install dependencies:
    `npm.cmd install`
 2. Copy `.env.example` to `.env.local`.
-3. Fill in Supabase, Cloudinary, and Resend credentials as available.
+3. Fill in Supabase and Cloudinary credentials. Add Resend only when a sender domain is ready.
 4. Start the app:
    `npm.cmd run dev`
 
@@ -27,8 +27,8 @@ A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CS
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- `RESEND_API_KEY`
 - `ADMIN_NOTIFICATION_EMAIL`
+- `RESEND_API_KEY` (optional)
 
 ## Demo Mode
 - If Supabase is not configured, the site runs with demo inventory and a demo admin mode.
@@ -77,9 +77,9 @@ A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CS
 - Usage guide: `scripts/README-cloudinary-sync.md`
 
 ## Resend Setup
-- Create a Resend API key.
-- Verify a sender domain or use a valid test sender.
-- Set `ADMIN_NOTIFICATION_EMAIL` to the sales inbox that should receive lead notifications.
+- Resend is optional for the current deployment.
+- If `RESEND_API_KEY` is missing, forms still save successfully and the app skips outbound notification email.
+- When a sender domain is ready, add the API key and set `ADMIN_NOTIFICATION_EMAIL` to the sales inbox that should receive lead notifications.
 
 ## Verification Commands
 - Lint: `npm.cmd run lint`
@@ -90,9 +90,25 @@ A production-oriented dealership MVP built with Next.js, TypeScript, Tailwind CS
 ## Deployment
 1. Push the repository to a Git provider.
 2. Import the project into Vercel.
-3. Configure the environment variables.
-4. Run the Supabase migration and seed.
-5. Deploy and validate inventory pages, forms, and admin login.
+3. Configure `NEXT_PUBLIC_SITE_URL`, Supabase, and Cloudinary environment variables.
+4. Add `ADMIN_NOTIFICATION_EMAIL`, and add `RESEND_API_KEY` only if email delivery is enabled.
+5. Run the Supabase migrations and optional seed.
+6. Deploy and validate inventory pages, forms, image sync, and admin login.
+
+## Release Smoke Test
+- `npm.cmd run lint`
+- `npm.cmd run typecheck`
+- `npm.cmd run test`
+- `npm.cmd run build`
+- `npm.cmd run test:e2e`
+
+## Post-Deploy Checks
+- Confirm admin login and protected routes in Vercel.
+- Create and edit a vehicle from `/admin/vehicles`.
+- Verify row actions and bulk inventory actions update state correctly.
+- Confirm Cloudinary gallery images render on `/cars/[slug]` and after image sync.
+- Submit a viewing form and verify the lead appears in `/admin/leads`.
+- If Resend is still deferred, confirm forms save without email errors.
 
 ## Planning Docs
 - [PLAN.md](./PLAN.md)

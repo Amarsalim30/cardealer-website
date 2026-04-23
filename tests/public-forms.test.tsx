@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 describe("public forms", () => {
-  it("renders a quick-contact viewing form with name, phone, and message", () => {
+  it("renders a viewing form with explicit scheduling fields", () => {
     useActionStateMock
       .mockReturnValueOnce([{ success: false, message: "" }, vi.fn()])
       .mockReturnValueOnce([{ success: false, message: "" }, vi.fn()]);
@@ -55,11 +55,12 @@ describe("public forms", () => {
       />,
     );
 
-    expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/preferred date/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/preferred time/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/best time for you/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText(/preferred date/i)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/preferred time/i)).not.toBeInTheDocument();
   });
 
   it("hides financing intent when the form is limited to contact-focused tabs", () => {

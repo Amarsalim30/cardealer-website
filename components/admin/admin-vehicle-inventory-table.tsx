@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 
 import { VehicleRowActions } from "@/components/admin/vehicle-row-actions";
 import { Badge } from "@/components/ui/badge";
@@ -127,11 +127,6 @@ export function AdminVehicleInventoryTable({
       : `Mark ${selectedCount} selected vehicle${selectedCount === 1 ? "" : "s"} as sold?`;
   const confirmationButtonLabel =
     pendingConfirmation === "delete" ? "Confirm delete" : "Confirm mark sold";
-
-  useEffect(() => {
-    setSelectedIds([]);
-    setPendingConfirmation(null);
-  }, [viewKey]);
 
   function toggleRow(id: string, checked: boolean) {
     setPendingConfirmation(null);

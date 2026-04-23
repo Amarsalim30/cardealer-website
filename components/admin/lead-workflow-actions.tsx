@@ -86,17 +86,17 @@ export function LeadWorkflowActions({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const availableStatuses = useMemo(() => getAllowedNextStatuses(status), [status]);
+  const defaultNextStatus = availableStatuses[0] || status;
   const [nextStatus, setNextStatus] = useState<LeadWorkflowStatus>(
-    availableStatuses[0] || status,
+    defaultNextStatus,
   );
   const [state, formAction] = useActionState(
     updateLeadInboxStateAction,
     initialState,
   );
-
-  useEffect(() => {
-    setNextStatus(getAllowedNextStatuses(status)[0] || status);
-  }, [status]);
+  const activeNextStatus = availableStatuses.includes(nextStatus)
+    ? nextStatus
+    : defaultNextStatus;
 
   useEffect(() => {
     if (!state.success) {
@@ -108,20 +108,20 @@ export function LeadWorkflowActions({
       "notice",
       buildLeadWorkflowNotice(
         params.get("status"),
-        nextStatus,
+        activeNextStatus,
         state.message || "Lead status updated.",
       ),
     );
     const nextUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
     window.location.assign(nextUrl);
-  }, [nextStatus, pathname, searchParams, state.message, state.success]);
+  }, [activeNextStatus, pathname, searchParams, state.message, state.success]);
 
   return (
     <div className="space-y-2">
       <form action={formAction} className="space-y-2">
         <input type="hidden" name="sourceId" value={sourceId} />
         <input type="hidden" name="sourceType" value={sourceType} />
-        <input type="hidden" name="status" value={nextStatus} />
+        <input type="hidden" name="status" value={activeNextStatus} />
 
         {availableStatuses.length > 1 ? (
           <div className="space-y-1">
@@ -134,7 +134,7 @@ export function LeadWorkflowActions({
             <select
               id={`lead-status-${sourceType}-${sourceId}`}
               className={selectClassName}
-              value={nextStatus}
+              value={activeNextStatus}
               onChange={(event) =>
                 setNextStatus(event.target.value as LeadWorkflowStatus)
               }
@@ -153,7 +153,7 @@ export function LeadWorkflowActions({
               Next step
             </p>
             <p className="mt-1 text-sm font-medium text-stone-900">
-              {humanizeLeadStatus(nextStatus)}
+              {humanizeLeadStatus(activeNextStatus)}
             </p>
           </div>
         )}
@@ -165,7 +165,7 @@ export function LeadWorkflowActions({
             availableStatuses.length === 1 ? "w-full justify-center" : "",
           )}
         >
-          {getSubmitLabel(nextStatus)}
+          {getSubmitLabel(activeNextStatus)}
         </SubmitButton>
       </form>
 

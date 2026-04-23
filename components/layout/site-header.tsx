@@ -13,24 +13,22 @@ export function SiteHeader() {
   const desktopLinks = navigationLinks.filter(
     (link) => link.href !== "/" && link.href !== "/inventory",
   );
-  const mobileLinks = navigationLinks.filter(
-    (link) => link.href !== "/" && link.href !== "/inventory",
-  );
+  const mobileLinks = navigationLinks.filter((link) => link.href !== "/");
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-surface/92 backdrop-blur">
-      <div className="container-shell flex items-center justify-between gap-6 py-3">
-        <Link href="/" className="flex items-center gap-3">
+      <div className="container-shell flex items-center justify-between gap-3 py-2 sm:gap-6 sm:py-3">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           <Image
             src="/logo.png"
             alt={`${siteConfig.name} logo`}
             width={40}
             height={40}
-            className="size-10 rounded-full border border-border object-cover"
+            className="size-8 rounded-full border border-border object-cover sm:size-10"
             priority
           />
-          <div>
-            <p className="text-xl font-semibold leading-none tracking-tight text-text-primary">
+          <div className="min-w-0">
+            <p className="truncate text-[1.18rem] font-semibold leading-none tracking-tight text-text-primary sm:text-xl">
               {siteConfig.shortName}
             </p>
             <p className="hidden text-xs uppercase tracking-[0.24em] text-text-secondary sm:block">
@@ -70,17 +68,9 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
-          <Button
-            asChild
-            variant="secondary"
-            size="sm"
-            className="h-9 border-border/70 bg-surface/60 px-3.5 text-text-secondary shadow-none hover:bg-surface-elevated hover:text-text-primary"
-          >
-            <Link href="/inventory">Inventory</Link>
-          </Button>
           <button
             type="button"
-            className="inline-flex size-11 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition-colors hover:bg-surface-elevated"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-border bg-surface text-text-primary transition-colors hover:bg-surface-elevated sm:size-11"
             onClick={() => setOpen((value) => !value)}
             aria-expanded={open}
             aria-label="Toggle navigation"
@@ -92,7 +82,7 @@ export function SiteHeader() {
 
       {open ? (
         <div className="border-t border-border bg-surface/95 lg:hidden">
-          <div className="container-shell flex flex-col gap-3 py-4">
+          <div className="container-shell flex flex-col gap-2.5 py-3">
             <div className="grid gap-3">
               <Button asChild variant="secondary" className="h-11">
                 <a href={siteConfig.phoneHref}>

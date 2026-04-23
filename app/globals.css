@@ -86,32 +86,36 @@ button {
 
 .container-shell {
   margin-inline: auto;
-  width: min(100% - 1.5rem, 1180px);
+  width: min(100% - 2rem, 1180px);
 }
 
 .section-shell {
-  padding-block: 4.5rem;
+  padding-block: 2.75rem;
 }
 
 .homepage-flow > .section-shell {
-  padding-block: 3rem;
+  padding-block: 2.25rem;
 }
 
 .homepage-flow > .section-shell:first-of-type {
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+  padding-top: 0.35rem;
+  padding-bottom: 0.4rem;
 }
 
 .homepage-flow > .section-shell:first-of-type + .section-shell {
-  padding-top: 1rem;
+  padding-top: 0.7rem;
 }
 
 .homepage-flow > .section-shell:last-of-type {
-  padding-top: 3rem;
-  padding-bottom: 5.5rem;
+  padding-top: 2.25rem;
+  padding-bottom: 5rem;
 }
 
 @media (min-width: 640px) {
+  .section-shell {
+    padding-block: 4.5rem;
+  }
+
   .homepage-flow > .section-shell {
     padding-block: 3.5rem;
   }

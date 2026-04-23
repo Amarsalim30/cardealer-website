@@ -145,6 +145,9 @@ export function VehicleEnquiryForm({
   const formId = `vehicle-enquiry-${intent}`;
   const phoneField = getActionFieldState(state, formId, "phone");
   const nameField = getActionFieldState(state, formId, "name");
+  const emailField = getActionFieldState(state, formId, "email");
+  const preferredDateField = getActionFieldState(state, formId, "preferredDate");
+  const preferredTimeField = getActionFieldState(state, formId, "preferredTime");
   const messageField = getActionFieldState(state, formId, "message");
   const eyebrowText = eyebrow || "Talk to sales";
   const headingText = heading || "Ask about this vehicle";
@@ -324,18 +327,13 @@ export function VehicleEnquiryForm({
           <input type="hidden" name="vehicleId" value={vehicleId || ""} />
           <input type="hidden" name="vehicleTitle" value={vehicleTitle || ""} />
           <input type="hidden" name="source" value={`${source} - ${intent}`} />
-          {intent !== "viewing" ? (
-            <input type="hidden" name="leadType" value={activeIntent.leadType} />
-          ) : (
-            <>
-              <input type="hidden" name="preferredDate" value="Confirm on call" />
-              <input type="hidden" name="preferredTime" value="Flexible" />
-            </>
-          )}
+          {intent !== "viewing" ? <input type="hidden" name="leadType" value={activeIntent.leadType} /> : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <Label htmlFor={`${formId}-name`}>Name</Label>
+              <Label htmlFor={`${formId}-name`}>
+                {intent === "viewing" ? "Full name" : "Name"}
+              </Label>
               <Input
                 id={`${formId}-name`}
                 name="name"
@@ -358,6 +356,55 @@ export function VehicleEnquiryForm({
               <FieldError id={phoneField.errorId} error={phoneField.error} />
             </div>
           </div>
+
+          {intent === "viewing" ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="sm:col-span-1">
+                <Label htmlFor={`${formId}-email`}>Email</Label>
+                <Input
+                  id={`${formId}-email`}
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  {...emailField.inputProps}
+                />
+                <FieldError id={emailField.errorId} error={emailField.error} />
+              </div>
+
+              <div>
+                <Label htmlFor={`${formId}-preferredDate`}>Preferred date</Label>
+                <Input
+                  id={`${formId}-preferredDate`}
+                  name="preferredDate"
+                  type="date"
+                  required
+                  {...preferredDateField.inputProps}
+                />
+                <FieldError
+                  id={preferredDateField.errorId}
+                  error={preferredDateField.error}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor={`${formId}-preferredTime`}>Preferred time</Label>
+                <Input
+                  id={`${formId}-preferredTime`}
+                  name="preferredTime"
+                  type="text"
+                  placeholder="10:30 AM"
+                  autoComplete="off"
+                  {...preferredTimeField.inputProps}
+                />
+                <FieldError
+                  id={preferredTimeField.errorId}
+                  error={preferredTimeField.error}
+                />
+              </div>
+            </div>
+          ) : null}
 
           <div>
             <div className="flex items-center justify-between gap-3">
